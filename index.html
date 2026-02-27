@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lemona - The First Playable Agent OS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg-dark: rgba(8, 12, 18, 0.98);
+        --panel-bg: rgba(12, 16, 24, 0.98);
+        --border: rgba(255, 255, 255, 0.35);
+        --text-main: rgba(255, 255, 255, 0.95);
+        --text-muted: rgba(255, 255, 255, 0.65);
+        --font-pixel: 'Press Start 2P', cursive;
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: var(--font-pixel);
+        background: var(--bg-dark);
+        color: var(--text-main);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+
+      /* Hero Section */
+      header {
+        padding: 12px 16px;
+        background: var(--panel-bg);
+        border-bottom: 2px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .hero-content h1 {
+        font-size: 10px;
+        color: var(--text-main);
+      }
+
+      .hero-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .btn {
+        padding: 6px 12px;
+        font-family: var(--font-pixel);
+        font-size: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        border: 2px solid var(--border);
+        background: transparent;
+        color: var(--text-main);
+      }
+
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .btn-primary {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .btn-primary:hover {
+        background: rgba(255, 255, 255, 0.22);
+      }
+
+      /* Workspace Layout */
+      .workspace {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* Sidebars */
+      .sidebar {
+        width: 260px;
+        background: var(--panel-bg);
+        border-right: 2px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+
+      .sidebar.right {
+        border-right: none;
+        border-left: 2px solid var(--border);
+        width: 300px;
+      }
+
+      .panel-header {
+        padding: 12px;
+        border-bottom: 2px solid var(--border);
+        font-size: 8px;
+        color: var(--text-muted);
+      }
+
+      .panel-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+      }
+
+      /* Game Container */
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #000;
+        overflow: hidden;
+        position: relative;
+      }
+
+      #game-container {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+      }
+
+      #game-container canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain;
+      }
+
+      /* Loading Screen */
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-dark);
+        z-index: 9999;
+      }
+
+      .loader-content {
+        text-align: center;
+      }
+
+      .loader-title {
+        font-size: 14px;
+        margin-bottom: 12px;
+        color: var(--text-main);
+      }
+
+      .loader-text {
+        font-size: 8px;
+        color: var(--text-muted);
+      }
+
+      /* Agent Cards */
+      .agent-card {
+        padding: 6px 2px;
+        border: none;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: transparent;
+        border-radius: 0;
+      }
+
+      .agent-avatar {
+        width: 30px;
+        height: 30px;
+        background: rgba(255, 255, 255, 0.08);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: var(--text-main);
+        border-radius: 50%;
+        overflow: hidden;
+      }
+
+      .agent-info h3 {
+        font-size: 8px;
+        margin-bottom: 4px;
+        color: var(--text-main);
+      }
+
+      .agent-status {
+        font-size: 6px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.6);
+      }
+
+      .status-dot.busy { background: rgba(255, 200, 100, 0.9); }
+
+      /* Log */
+      .log-entry {
+        font-family: var(--font-pixel);
+        font-size: 6px;
+        padding: 8px 12px;
+        border-bottom: 2px solid var(--border);
+        color: var(--text-muted);
+      }
+
+      .log-entry span.agent { color: var(--text-main); }
+      .log-entry span.action { color: rgba(255, 255, 255, 0.8); }
+
+      /* Task Input */
+      .task-input-wrapper {
+        padding: 12px;
+        border-top: 2px solid var(--border);
+        background: var(--panel-bg);
+      }
+
+      .task-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 2px solid var(--border);
+        font-family: var(--font-pixel);
+        font-size: 8px;
+        background: rgba(0, 0, 0, 0.3);
+        color: var(--text-main);
+        outline: none;
+      }
+
+      .task-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .task-input:focus {
+        border-color: rgba(255, 255, 255, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading-screen">
+      <div class="loader-content">
+        <div class="loader-title">Lemona OS</div>
+        <div class="loader-text">Booting up agents...</div>
+      </div>
+    </div>
+
+    <!-- Hero Header -->
+    <header>
+      <div class="hero-content">
+        <h1>Lemona</h1>
+      </div>
+      <div class="hero-actions">
+        <a href="#" class="btn btn-outline">View GitHub</a>
+        <a href="#" class="btn btn-primary">Deploy Agents</a>
+      </div>
+    </header>
+
+    <!-- Workspace -->
+    <div class="workspace">
+      <!-- Left Sidebar: -->
+      <aside class="sidebar">
+        <div class="panel-header">Roommates</div>
+        <div class="panel-content">
+          <div class="agent-card">
+            <div class="agent-avatar">I</div>
+            <div class="agent-info">
+              <h3>Iris</h3>
+              <div class="agent-status"><span class="status-dot"></span> Idle</div>
+            </div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-avatar">E</div>
+            <div class="agent-info">
+              <h3>Edward</h3>
+              <div class="agent-status"><span class="status-dot busy"></span> Coding</div>
+            </div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-avatar">M</div>
+            <div class="agent-info">
+              <h3>Momo</h3>
+              <div class="agent-status"><span class="status-dot busy"></span> Web Search</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Game Canvas -->
+      <main class="main-content">
+        <div id="game-container"></div>
+      </main>
+
+      <!-- Right Sidebar: Terminal / Tasks -->
+      <aside class="sidebar right">
+        <div class="panel-header">Activity Log</div>
+        <div class="panel-content" style="padding: 0;">
+          <div class="log-entry">
+            [System] Lemona OS initialized.
+          </div>
+        </div>
+        <div class="task-input-wrapper">
+          <input type="text" class="task-input" placeholder="Assign a task to your team..." />
+        </div>
+      </aside>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
