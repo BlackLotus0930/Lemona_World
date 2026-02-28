@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="58" height="36" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="226">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="58" height="36" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="238">
  <layer id="1" name="Tile Layer 1" width="58" height="36">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -101,7 +101,7 @@
   <object id="41" name="Door" type="door" x="304.5" y="209" width="30.5" height="30.5"/>
   <object id="44" name="Door" type="door" x="283.5" y="336.5" width="3.5" height="47"/>
   <object id="47" name="Door" type="door" x="464" y="207.5" width="32.25" height="32"/>
-  <object id="48" name="Door" type="door" x="511" y="65" width="48.5" height="30.5"/>
+  <object id="48" name="door_to_outside" type="wall" x="511" y="65" width="48.5" height="30.5"/>
   <object id="49" name="Door" type="door" x="576" y="209" width="30.5" height="30.5"/>
   <object id="51" name="Door" type="door" x="624.5" y="224.5" width="6" height="48"/>
   <object id="52" name="Door" type="door" x="624" y="336.5" width="6" height="48"/>
@@ -137,8 +137,6 @@
   <object id="167" name="punching_bag" type="gym_equipement" x="640" y="86" width="16" height="34"/>
   <object id="168" name="treadmill" type="gym_equipement" x="675.5" y="79" width="24" height="43.5"/>
   <object id="169" name="treadmill" type="gym_equipement" x="707" y="79.5" width="25" height="42"/>
-  <object id="170" name="kitchen_appliance" type="kitchen_appliance" x="480" y="398" width="65.5" height="28.5"/>
-  <object id="173" name="kitchen_appliance" type="kitchen_appliance" x="367" y="392.5" width="47.5" height="31"/>
   <object id="174" name="kitchen_table" type="table" x="473" y="448" width="29.5" height="39.5"/>
   <object id="175" name="kitchen_chair" type="chair" x="448.5" y="447" width="14" height="20.5"/>
   <object id="176" name="kitchen_chair" type="chair" x="450.5" y="467.5" width="13.5" height="18.5"/>
@@ -173,12 +171,18 @@
   <object id="215" name="desk_lamp" type="lamp" x="319.333" y="250" width="16" height="30"/>
   <object id="216" name="dashboard" type="dashboard" x="337.333" y="213.333" width="95.3333" height="25.3333"/>
   <object id="217" name="tv_shelf" type="tv_shelf" x="448.667" y="305.333" width="13.3333" height="26.6667"/>
-  <object id="218" name="kitchen_shelf" type="kitchen_shelf" x="368" y="432" width="51.3333" height="26.6667"/>
-  <object id="219" name="kitchen_shelf" type="kitchen_shelf" x="368" y="472.667" width="49.3333" height="17.3333"/>
   <object id="220" name="bottles" type="bottles" x="368" y="490" width="20" height="18"/>
   <object id="221" name="books" type="book" x="264.667" y="411.333" width="40" height="12"/>
+  <object id="226" name="fridge" type="kitchen_objects" x="368" y="391" width="15.6667" height="34.3333"/>
+  <object id="227" name="stove" type="kitchen_objects" x="384" y="401" width="16" height="25.3333"/>
+  <object id="229" name="kitchen_sink" type="kitchen_objects" x="448.333" y="399.667" width="32" height="28"/>
+  <object id="232" name="bread_maker" type="kitchen_objects" x="480.333" y="400" width="16" height="26"/>
+  <object id="233" name="coffee_machine" type="kitchen_objects" x="496.667" y="398.667" width="16.3333" height="27"/>
+  <object id="235" name="microwave" type="kitchen_objects" x="514.333" y="400.333" width="30.6667" height="26"/>
+  <object id="236" name="kitchen_cabinet" type="kitchen_objects" x="368" y="438" width="49.6667" height="21"/>
+  <object id="237" name="kitchen_cabinet" type="kitchen_objects                       " x="368" y="472.333" width="48.3333" height="18"/>
  </objectgroup>
- <objectgroup id="6" name="Object Layer_Walls" visible="0">
+ <objectgroup id="6" name="Object Layer_Walls">
   <object id="56" name="Wall" type="wall" x="159.333" y="63.3333" width="17.3333" height="454"/>
   <object id="58" name="Wall" type="wall" x="736" y="65.3333" width="15.3333" height="451.333"/>
   <object id="59" name="Wall" type="wall" x="160" y="512.667" width="591.333" height="3.33333"/>
@@ -186,7 +190,7 @@
   <object id="61" name="Wall" type="wall" x="336" y="208" width="128" height="31.3333"/>
   <object id="62" name="Wall" type="wall" x="505.333" y="65.3333" width="6.66667" height="173.333"/>
   <object id="63" name="Wall" type="wall" x="495.333" y="208" width="10.6667" height="32"/>
-  <object id="64" name="Wall" type="Wall" x="560.667" y="65.3333" width="6.66667" height="173.333"/>
+  <object id="64" name="Wall" type="wall" x="560.667" y="65.3333" width="6.66667" height="173.333"/>
   <object id="65" name="Wall" type="Wall" x="567.333" y="209.333" width="8.66667" height="30"/>
   <object id="66" name="Wall" type="wall" x="607.333" y="208" width="16.6667" height="32"/>
   <object id="67" name="Wall" type="wall" x="624" y="176.667" width="6.66667" height="48.6667"/>
@@ -200,6 +204,6 @@
   <object id="82" name="Wall" type="wall" x="345.333" y="64.6667" width="6.66667" height="144"/>
   <object id="85" name="Wall" type="wall" x="282.667" y="240" width="4.66667" height="96.6667"/>
   <object id="86" name="Wall" type="wall" x="160" y="63.3333" width="351.333" height="32.6667"/>
-  <object id="87" name="Wall" type="Wall" x="560" y="64.6667" width="190" height="29.3333"/>
+  <object id="87" name="Wall" type="wall" x="560" y="64.6667" width="190" height="29.3333"/>
  </objectgroup>
 </map>

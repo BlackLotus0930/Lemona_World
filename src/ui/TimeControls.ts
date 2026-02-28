@@ -22,7 +22,7 @@ export class TimeControls {
       background: rgba(8, 12, 18, 0.95);
       border: 2px solid rgba(255, 255, 255, 0.4);
       color: rgba(255, 255, 255, 0.95);
-      font-family: 'Press Start 2P', cursive;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
       font-size: 10px;
       z-index: 1000;
       image-rendering: pixelated;
@@ -48,10 +48,12 @@ export class TimeControls {
   }
 
   update() {
-    const { day, hours, minutes } = this.schedule.getGameTime();
+    const { hours, minutes, year, month, dayOfMonth } = this.schedule.getGameTime();
     const h = hours.toString().padStart(2, '0');
     const m = minutes.toString().padStart(2, '0');
-    this.daySpan.textContent = `DAY ${day.toString().padStart(2, '0')}`;
+    const mm = month.toString().padStart(2, '0');
+    const dd = dayOfMonth.toString().padStart(2, '0');
+    this.daySpan.textContent = `${mm}-${dd}-${year}`;
     this.clockSpan.textContent = `${h}:${m}`;
   }
 }

@@ -218,28 +218,27 @@ export class World extends Container {
       const blockedTiles = new Set<string>();
       const doorTiles = new Set<string>();
       const objectGroups = Array.from(doc.querySelectorAll('objectgroup'));
-      const passThroughTypes = new Set([
-        'room',
-        'door',
-        'spawn',
-        'entry',
-        'exit',
-        'trigger',
-        'waypoint',
-      ]);
 
       for (const group of objectGroups) {
         const groupName = (group.getAttribute('name') ?? '').toLowerCase().trim();
-        const isSolidObjectsLayer = groupName === 'object layer_objects';
+        const isWallGroup = groupName.includes('wall');
+        const isDoorGroup = groupName.includes('door');
+        const isRoomsGroup = groupName.includes('room');
         const objects = Array.from(group.querySelectorAll('object'));
         for (const object of objects) {
-          const type = (object.getAttribute('type') ?? object.getAttribute('class') ?? '').toLowerCase().trim();
-          const name = (object.getAttribute('name') ?? '').toLowerCase().trim();
-          const hasLabel = type.length > 0 || name.length > 0;
-          const isWall = type === 'wall' || name === 'wall';
+          const type = normalizeObjectLabel(
+            object.getAttribute('type') ?? object.getAttribute('class') ?? '',
+          );
+          const name = normalizeObjectLabel(object.getAttribute('name') ?? '');
           const isDoor = type === 'door' || name === 'door';
-          const isPassThroughLabeled = hasLabel && (passThroughTypes.has(type) || passThroughTypes.has(name));
-          const shouldBlock = isWall || (isSolidObjectsLayer && !isDoor) || (hasLabel && !isPassThroughLabeled && !isDoor);
+          const blocksOverride = readBooleanObjectProperty(object, 'blocksMovement');
+          const shouldBlock = blocksOverride ?? resolveDefaultBlocking({
+            type,
+            name,
+            isWallGroup,
+            isDoorGroup,
+            isRoomsGroup,
+          });
           if (!shouldBlock && !isDoor) {
             continue;
           }
@@ -305,4 +304,101 @@ export class World extends Container {
       return new Set<string>();
     }
   }
+}
+
+const NON_BLOCKING_OBJECT_LABELS = new Set([
+  'room',
+  'door',
+  'spawn',
+  'entry',
+  'exit',
+  'trigger',
+  'waypoint',
+  'chair',
+  'sofa',
+  'bed',
+  'beds',
+  'computer',
+  'instrument',
+  'toilet',
+  'shower',
+  'bathtub',
+  'gym_equipement',
+  'gym_equipements',
+  'treadmill',
+  'punching_bag',
+  'bench_press_chair',
+]);
+
+const BLOCKING_OBJECT_LABELS = new Set([
+  'wall',
+  'closet',
+  'closets',
+  'computer_table',
+  'book_shelf',
+  'book_stand',
+  'television',
+  'tv',
+  'piano',
+  'shelf',
+  'tv_shelf',
+  'kitchen_shelf',
+  'dashboard',
+  'dressing_table',
+  'kitchen_appliance',
+  'kitchen_objects',
+  'fridge',
+  'stove',
+  'kitchen_cabinet',
+  'washing_machine',
+  'mirror',
+  'study_table',
+  'class_table',
+  'dorm_table',
+  'teacher_table',
+  'kitchen_table',
+  'living_room_table',
+]);
+
+function normalizeObjectLabel(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function readBooleanObjectProperty(object: Element, propertyName: string): boolean | null {
+  const properties = object.querySelector('properties');
+  if (!properties) return null;
+  const propertyNodes = Array.from(properties.querySelectorAll('property'));
+  const target = propertyNodes.find((node) => {
+    const name = node.getAttribute('name');
+    return name?.toLowerCase() === propertyName.toLowerCase();
+  });
+  if (!target) return null;
+
+  const type = (target.getAttribute('type') ?? '').toLowerCase().trim();
+  const rawValue = (target.getAttribute('value') ?? target.textContent ?? '').toLowerCase().trim();
+  if (type === 'bool' || rawValue === 'true' || rawValue === 'false' || rawValue === '1' || rawValue === '0') {
+    return rawValue === 'true' || rawValue === '1';
+  }
+  return null;
+}
+
+const BLOCKED_EXIT_NAMES = new Set(['door_to_outside']);
+
+function resolveDefaultBlocking(params: {
+  type: string;
+  name: string;
+  isWallGroup: boolean;
+  isDoorGroup: boolean;
+  isRoomsGroup: boolean;
+}): boolean {
+  const { type, name, isWallGroup, isDoorGroup, isRoomsGroup } = params;
+  if (BLOCKED_EXIT_NAMES.has(name)) return true;
+  if (isDoorGroup || type === 'door' || name === 'door') return false;
+  if (isRoomsGroup) return false;
+  if (isWallGroup) return true;
+  if (BLOCKING_OBJECT_LABELS.has(type) || BLOCKING_OBJECT_LABELS.has(name)) return true;
+  if (NON_BLOCKING_OBJECT_LABELS.has(type) || NON_BLOCKING_OBJECT_LABELS.has(name)) return false;
+  // For unknown object labels, stay conservative but keep them walkable
+  // so NPCs can still reach custom interaction anchors.
+  return false;
 }

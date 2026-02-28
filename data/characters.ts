@@ -142,7 +142,7 @@ export const CHARACTERS: CharacterConfig[] = [
     startWaypointIndex: 0,
     startWaypointProgressMinutes: 25,
     schedule: [
-      { roomId: 'dorm2', tileX: 43, tileY: 28, activity: 'sleep', durationMinutes: 60 },
+      { roomId: 'dorm2', tileX: 43, tileY: 29, activity: 'sleep', durationMinutes: 60 },
       { roomId: 'class2', tileX: 18, tileY: 28, activity: 'study', durationMinutes: 80 },
       { roomId: 'hall1', tileX: 22, tileY: 17, activity: 'social', durationMinutes: 30 },
       { roomId: 'hall1', tileX: 24, tileY: 17, activity: 'watch_tv', durationMinutes: 20 },
@@ -162,12 +162,12 @@ export const CHARACTERS: CharacterConfig[] = [
     startWaypointIndex: 0,
     startWaypointProgressMinutes: 8,
     schedule: [
-      { roomId: 'dorm2', tileX: 39, tileY: 29, activity: 'sleep', durationMinutes: 55 },
+      { roomId: 'dorm1', tileX: 23, tileY: 8, activity: 'sleep', durationMinutes: 55 },
       { roomId: 'class2', tileX: 15, tileY: 28, activity: 'study', durationMinutes: 75 },
       { roomId: 'hall1', tileX: 27, tileY: 17, activity: 'watch_tv', durationMinutes: 22 },
       { roomId: 'canteen', tileX: 28, tileY: 28, activity: 'eat', durationMinutes: 42 },
       { roomId: 'class1', tileX: 13, tileY: 7, activity: 'music', durationMinutes: 28 },
-      { roomId: 'dorm2', tileX: 41, tileY: 29, activity: 'rest', durationMinutes: 110 },
+      { roomId: 'dorm1', tileX: 25, tileY: 10, activity: 'rest', durationMinutes: 110 },
     ],
   },
   {

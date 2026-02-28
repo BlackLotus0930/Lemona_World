@@ -1,4 +1,4 @@
-import { AnimatedSprite, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { AnimatedSprite, Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { TILE_SIZE } from '../../data/map';
 import type { CharacterConfig, ScheduleWaypoint } from '../../data/characters';
 import type { AgentRuntimeState, TaskId } from '../agent/types';
@@ -10,40 +10,85 @@ import type { ResolvedTarget } from './world/WorldSemantics';
 type FacingDirection = 'down' | 'left' | 'right' | 'up';
 type AnimationMode = 'idle' | 'walk' | 'work';
 
-const UI_SPRITESHEET_PATH = '/assets/user_interface/UI_emotes_animation_16x16.png';
+const UI_SPRITESHEET_PATH = '/assets/user_interface/popupemotes.png';
+const SINGLE_LINE_SPEECH_BUBBLE_PATH = '/assets/user_interface/single-line-bubble.png';
+const MULTI_LINE_SPEECH_BUBBLE_PATH = '/assets/user_interface/multi-line-bubble.png';
+
+type SpeechBubbleVariant = 'single' | 'multi';
+
+const BUBBLE_LAYOUT: Record<
+  SpeechBubbleVariant,
+  { scale: number; textCenterYRatio: number; textWidthRatio: number; fontSize: number }
+> = {
+  single: { scale: 0.24, textCenterYRatio: 0.61, textWidthRatio: 0.9, fontSize: 24 },
+  multi: { scale: 0.22, textCenterYRatio: 0.59, textWidthRatio: 0.82, fontSize: 23 },
+};
+
+const EMOTE_CELL_SIZE = 32;
 
 const ACTIVITY_ICON_FRAMES: Record<string, { x: number; y: number; w: number; h: number }> = {
-  // Exact coordinates from UI_emotes_animation_16x16.png
-  idea:         { x: 0,  y: 0,  w: 16, h: 16 }, // Alert / Idea
-  money:        { x: 16, y: 0,  w: 16, h: 16 }, // Money / Currency
-  hammer:       { x: 32, y: 0,  w: 16, h: 16 }, // Hammer / Repair
-  sleep:        { x: 48, y: 0,  w: 16, h: 16 }, // Sleep (Zzz)
-  moon_full:    { x: 64, y: 0,  w: 16, h: 16 }, // Moon (Full)
-  moon_half:    { x: 80, y: 0,  w: 16, h: 16 }, // Moon (Crescent)
-  danger:       { x: 0,  y: 16, w: 16, h: 16 }, // Surprise / Danger
-  question:     { x: 16, y: 16, w: 16, h: 16 }, // Question
-  broken_heart: { x: 32, y: 16, w: 16, h: 16 }, // Broken Heart
-  heart:        { x: 48, y: 16, w: 16, h: 16 }, // Heart
-  blush:        { x: 64, y: 16, w: 16, h: 16 }, // Blush
-  sweat:        { x: 80, y: 16, w: 16, h: 16 }, // Sweat / Water Drop
-  anger:        { x: 0,  y: 32, w: 16, h: 16 }, // Anger
-  thinking:     { x: 16, y: 32, w: 16, h: 16 }, // Thinking
-  sword:        { x: 32, y: 32, w: 16, h: 16 }, // Sword
-  music:        { x: 48, y: 32, w: 16, h: 16 }, // Music (double note)
-  music_alt:    { x: 64, y: 32, w: 16, h: 16 }, // Music (single note)
+  // popupemotes.png grid: 10 rows × 11 cols, 32×32 per cell. Row/Col 1-based -> pixel (col-1)*32, (row-1)*32
+  exclamation:    { x: 0,   y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 1
+  question:       { x: 32,  y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 2
+  exclaim_question: { x: 64,  y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 3
+  surprise:       { x: 96,  y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 4
+  music:          { x: 128, y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 5
+  sparkles:       { x: 160, y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 6
+  star:           { x: 192, y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 7
+  dust:           { x: 224, y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 8
+  heart:          { x: 256, y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 9
+  broken_heart:   { x: 288, y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 10
+  event:          { x: 320, y: 0,   w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 1 Col 11
+  blush:          { x: 0,   y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 1
+  kiss:           { x: 32,  y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 2
+  flower:         { x: 64,  y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 3
+  spiral:         { x: 96,  y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 4
+  confetti:       { x: 128, y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 5
+  target:         { x: 160, y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 6
+  idea:           { x: 192, y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 7 - lightbulb
+  ellipsis:       { x: 224, y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 8
+  scribble:       { x: 256, y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 9
+  dizzy:          { x: 288, y: 32,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 2 Col 10
+  sleep:          { x: 0,   y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 1 - Zzz
+  anger:          { x: 32,  y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 2
+  water:          { x: 64,  y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 3 - splashing water
+  sigh:           { x: 96,  y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 4
+  stress:         { x: 128, y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 5
+  teardrop:       { x: 160, y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 6
+  sweat:          { x: 192, y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 7
+  skull:          { x: 224, y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 8
+  impact:         { x: 256, y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 9
+  rock:           { x: 288, y: 64,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 3 Col 10
+  star_eyes:      { x: 0,   y: 96,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 4 Col 1
+  closed_eyes:    { x: 32,  y: 96,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 4 Col 2
+  crossed_eyes:   { x: 64,  y: 96,  w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 4 Col 3
+  swords:         { x: 96,  y: 128, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 5 Col 4
+  music_notes:    { x: 288, y: 128, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 5 Col 10
+  sun:            { x: 64,  y: 160, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 6 Col 3
+  cloud:          { x: 96,  y: 160, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 6 Col 4
+  moon:           { x: 256, y: 160, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 6 Col 9 - crescent
+  bread:          { x: 288, y: 160, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 6 Col 10
+  meat:           { x: 0,   y: 192, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 7 Col 1
+  apple:          { x: 96,  y: 192, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 7 Col 4
+  cake:           { x: 128, y: 192, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 7 Col 5
+  tea:            { x: 160, y: 192, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 7 Col 6
+  book:           { x: 256, y: 192, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 7 Col 9
+  hammer:        { x: 0,   y: 224, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 8 Col 1
+  coin:           { x: 96,  y: 224, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 8 Col 4
+  clock:          { x: 64,  y: 224, w: EMOTE_CELL_SIZE, h: EMOTE_CELL_SIZE }, // Row 8 Col 3
 };
 
 const ACTIVITY_TO_EMOTE: Record<ScheduleWaypoint['activity'], keyof typeof ACTIVITY_ICON_FRAMES> = {
   sleep: 'sleep',
-  eat: 'money',
-  study: 'thinking',
+  eat: 'bread',
+  study: 'book',
   exercise: 'sweat',
   social: 'heart',
-  rest: 'moon_half',
+  rest: 'moon',
   music: 'music',
   watch_tv: 'idea',
   toilet: 'question',
-  shower: 'sweat',
+  shower: 'water',
   clean: 'hammer',
 };
 
@@ -53,6 +98,7 @@ const SOFT_STUCK_MINUTES = 1.5;
 const HARD_STUCK_MINUTES = 3.5;
 const TARGET_JITTER_RADIUS = 1;
 const CROWD_SOFT_LIMIT = 1;
+const MOVEMENT_EPSILON = 0.05;
 
 export class Character extends Container {
   readonly id: string;
@@ -97,6 +143,12 @@ export class Character extends Container {
   private lifeMinutes = 0;
 
   private activitySprite: Sprite | null = null;
+  private singleLineSpeechBubbleTexture: Texture | null = null;
+  private multiLineSpeechBubbleTexture: Texture | null = null;
+  private speechBubbleSprite: Sprite | null = null;
+  private speechBubbleText: Text | null = null;
+  private speechBubbleVariant: SpeechBubbleVariant = 'single';
+  private speechBubbleMinutesLeft = 0;
   private uiSpritesheet: Texture | null = null;
   private displayedActivity: string | null = null;
   private iconTextures = new Map<string, Texture>();
@@ -136,6 +188,8 @@ export class Character extends Container {
     } catch {
       // Icons unavailable -- fallback to no indicators.
     }
+
+    await this.loadSpeechBubbleTextures();
 
     if (!this.config.spritePath) return;
 
@@ -202,6 +256,12 @@ export class Character extends Container {
 
   update(deltaMinutes: number): void {
     this.lifeMinutes += deltaMinutes;
+    if (this.speechBubbleMinutesLeft > 0) {
+      this.speechBubbleMinutesLeft = Math.max(0, this.speechBubbleMinutesLeft - deltaMinutes);
+      if (this.speechBubbleMinutesLeft === 0) {
+        this.hideSpeechBubble();
+      }
+    }
     if (this.runtimeState === 'moving_to_desk' && this.deskTarget) {
       const reached = this.moveTowardsTile(this.deskTarget.tileX, this.deskTarget.tileY, deltaMinutes);
       if (reached) {
@@ -290,6 +350,58 @@ export class Character extends Container {
     this.statusText = statusText;
   }
 
+  showSpeechBubble(text: string, durationMinutes = 2): void {
+    const cleanedText = text.trim();
+    if (!cleanedText) {
+      this.hideSpeechBubble();
+      return;
+    }
+
+    const variant: SpeechBubbleVariant = cleanedText.includes('\n') || cleanedText.length > 34 ? 'multi' : 'single';
+    const texture = variant === 'multi'
+      ? (this.multiLineSpeechBubbleTexture ?? this.singleLineSpeechBubbleTexture)
+      : (this.singleLineSpeechBubbleTexture ?? this.multiLineSpeechBubbleTexture);
+    if (!texture) return;
+
+    this.speechBubbleMinutesLeft = Math.max(this.speechBubbleMinutesLeft, durationMinutes);
+    if (!this.speechBubbleSprite || !this.speechBubbleText) {
+      this.speechBubbleSprite = new Sprite(texture);
+      this.speechBubbleSprite.anchor.set(0.5, 1);
+      this.speechBubbleSprite.roundPixels = true;
+      this.speechBubbleText = new Text({
+        text: cleanedText,
+        style: new TextStyle({
+          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+          fill: 0x1b1b1b,
+          align: 'center',
+        }),
+      });
+      this.speechBubbleText.anchor.set(0.5, 0.5);
+      this.speechBubbleSprite.addChild(this.speechBubbleText);
+      this.addChild(this.speechBubbleSprite);
+    }
+
+    this.speechBubbleVariant = variant;
+    this.speechBubbleSprite.texture = texture;
+    this.speechBubbleText.text = cleanedText;
+    this.applySpeechBubbleLayout();
+    this.speechBubbleSprite.visible = true;
+    this.positionSpeechBubble();
+  }
+
+  hideSpeechBubble(): void {
+    this.speechBubbleMinutesLeft = 0;
+    if (!this.speechBubbleSprite) return;
+    if (this.speechBubbleText) {
+      this.speechBubbleSprite.removeChild(this.speechBubbleText);
+      this.speechBubbleText.destroy();
+      this.speechBubbleText = null;
+    }
+    this.removeChild(this.speechBubbleSprite);
+    this.speechBubbleSprite.destroy();
+    this.speechBubbleSprite = null;
+  }
+
   getRuntimeState(): AgentRuntimeState {
     return this.runtimeState;
   }
@@ -310,8 +422,15 @@ export class Character extends Container {
   private updateScheduleMovement(deltaMinutes: number): void {
     const wp = this.waypoints[this.currentWaypointIndex];
     const resolved = this.resolveWaypointTarget(wp);
+    const beforeX = this.posX;
+    const beforeY = this.posY;
     const reached = this.moveTowardsTile(resolved.tileX, resolved.tileY, deltaMinutes);
-    this.animationMode = reached ? 'idle' : 'walk';
+    const movedDistance = Math.abs(this.posX - beforeX) + Math.abs(this.posY - beforeY);
+    const isMoving = movedDistance > MOVEMENT_EPSILON;
+    if (reached && resolved.facing) {
+      this.facing = resolved.facing;
+    }
+    this.animationMode = reached || !isMoving ? 'idle' : 'walk';
     this.updateAnimationVisual();
     this.updateActivityIcon(reached ? ACTIVITY_TO_EMOTE[wp.activity] : null);
 
@@ -393,6 +512,8 @@ export class Character extends Container {
           this.replanPathTo(rescue);
         }
       }
+      // Keep stuck recovery active even when no path segment exists.
+      this.updateStuckTracker(deltaMinutes, target);
       return false;
     }
 
@@ -494,6 +615,7 @@ export class Character extends Container {
     } else {
       this.sprite.animationSpeed = (this.config.spriteFps ?? 8) / 60;
     }
+    this.positionSpeechBubble();
   }
 
   private buildIconTextures(): void {
@@ -529,9 +651,68 @@ export class Character extends Container {
 
     this.activitySprite = new Sprite(texture);
     this.activitySprite.anchor.set(0.5, 1);
+    this.activitySprite.scale.set(0.65);
     // Place icon directly above character head (no overhead name label).
     this.activitySprite.y = this.sprite ? -(this.sprite.height * this.sprite.anchor.y) - 2 : -8;
     this.addChild(this.activitySprite);
+    this.positionSpeechBubble();
+  }
+
+  private positionSpeechBubble(): void {
+    if (!this.speechBubbleSprite) return;
+    const baseY = this.sprite ? -(this.sprite.height * this.sprite.anchor.y) - 4 : -8;
+    const iconOffset = this.activitySprite ? 18 : 0;
+    this.speechBubbleSprite.y = baseY - iconOffset;
+  }
+
+  private async loadSpeechBubbleTextures(): Promise<void> {
+    try {
+      const singleLineBase = (await Assets.load(SINGLE_LINE_SPEECH_BUBBLE_PATH)) as Texture;
+      // Use linear sampling for dialogue UI so contour appears less heavy.
+      singleLineBase.source.scaleMode = 'linear';
+      this.singleLineSpeechBubbleTexture = singleLineBase;
+    } catch {
+      this.singleLineSpeechBubbleTexture = null;
+    }
+
+    try {
+      const multiLineBase = (await Assets.load(MULTI_LINE_SPEECH_BUBBLE_PATH)) as Texture;
+      // Use linear sampling for dialogue UI so contour appears less heavy.
+      multiLineBase.source.scaleMode = 'linear';
+      this.multiLineSpeechBubbleTexture = multiLineBase;
+    } catch {
+      this.multiLineSpeechBubbleTexture = null;
+    }
+  }
+
+  private applySpeechBubbleLayout(): void {
+    if (!this.speechBubbleSprite || !this.speechBubbleText) return;
+    const layout = BUBBLE_LAYOUT[this.speechBubbleVariant];
+    const bubbleTextureWidth = this.speechBubbleSprite.texture.width;
+    const bubbleTextureHeight = this.speechBubbleSprite.texture.height;
+    const textStyle = new TextStyle({
+      fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+      fontSize: layout.fontSize,
+      fill: 0x1b1b1b,
+      align: 'center',
+      wordWrap: true,
+      wordWrapWidth: Math.floor(bubbleTextureWidth * layout.textWidthRatio),
+      breakWords: true,
+    });
+    this.speechBubbleText.style = textStyle;
+    this.speechBubbleText.y = -bubbleTextureHeight * layout.textCenterYRatio;
+
+    let bubbleScale = layout.scale;
+    if (this.speechBubbleVariant === 'multi') {
+      const approxCharsPerLine = Math.max(8, Math.floor((textStyle.wordWrapWidth ?? 200) / (layout.fontSize * 0.62)));
+      const estimatedLines = this.speechBubbleText.text
+        .split('\n')
+        .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / approxCharsPerLine)), 0);
+      const extraLines = Math.max(0, estimatedLines - 3);
+      // Gradually enlarge multiline bubbles so long dialogue stays readable.
+      bubbleScale = Math.min(layout.scale * 1.35, layout.scale * (1 + extraLines * 0.1));
+    }
+    this.speechBubbleSprite.scale.set(bubbleScale);
   }
 
   getDisplayPosition(): { x: number; y: number } {
@@ -565,7 +746,10 @@ export class Character extends Container {
     this.navGrid = navGrid;
     // If configured spawn is inside blocked geometry, relocate to nearest walkable tile.
     const spawnTile = this.getCurrentTile();
-    const safeSpawn = this.navGrid.closestWalkable(spawnTile, 10);
+    let safeSpawn = this.navGrid.closestWalkable(spawnTile, 10);
+    if (!safeSpawn) {
+      safeSpawn = this.navGrid.closestWalkable(spawnTile, 24);
+    }
     if (safeSpawn && (safeSpawn.x !== spawnTile.x || safeSpawn.y !== spawnTile.y)) {
       this.posX = safeSpawn.x * TILE_SIZE + TILE_SIZE / 2;
       this.posY = safeSpawn.y * TILE_SIZE + TILE_SIZE / 2;
@@ -652,6 +836,8 @@ export class Character extends Container {
   }
 
   private selectLocalTarget(base: ResolvedTarget): ResolvedTarget {
+    // Keep exact object anchor when a semantic point provides facing/pose.
+    if (base.facing || base.pose) return base;
     if (!this.navGrid || this.deterministicBehavior) return base;
     let best = { x: base.tileX, y: base.tileY };
     let bestScore = Number.POSITIVE_INFINITY;

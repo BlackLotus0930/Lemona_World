@@ -118,6 +118,7 @@ export class GameView {
       this.world.tileHeight,
       colliderKeys,
     );
+    this.worldSemantics.setNavGrid(this.navGrid);
     for (const character of this.characters) {
       character.setNavGrid(this.navGrid);
       character.setMovementContext(
@@ -231,6 +232,7 @@ export class GameView {
         const speaker = this.getCharacterById(event.dialogue.speakerId);
         if (speaker && event.dialogue.text) {
           speaker.setStatusText(event.dialogue.text);
+          speaker.showSpeechBubble(event.dialogue.text);
         }
       }
       return;
@@ -238,7 +240,12 @@ export class GameView {
 
     if (event.type === 'AGENT_CONVERSATION_END') {
       if (event.dialogue?.speakerId) {
-        this.getCharacterById(event.dialogue.speakerId)?.setStatusText('Back to routine');
+        const speaker = this.getCharacterById(event.dialogue.speakerId);
+        speaker?.setStatusText('Back to routine');
+        speaker?.hideSpeechBubble();
+      }
+      if (event.dialogue?.listenerId) {
+        this.getCharacterById(event.dialogue.listenerId)?.hideSpeechBubble();
       }
       return;
     }

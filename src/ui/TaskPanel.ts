@@ -33,7 +33,7 @@ export class TaskPanel {
       border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 10px;
       color: #e5eefc;
-      font-family: system-ui, sans-serif;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
       padding: 10px;
       z-index: 1100;
       backdrop-filter: blur(3px);

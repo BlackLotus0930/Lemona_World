@@ -6,6 +6,7 @@
 export class Schedule {
   private gameMinutes = 7 * 60; // 7:00 AM
   private gameDays = 1;
+  private readonly startDate = new Date(2019, 7, 30);
   private realSecondsAccum = 0;
   private _timeScale = 1;
   private _paused = false;
@@ -46,10 +47,19 @@ export class Schedule {
     }
   }
 
-  getGameTime(): { day: number; hours: number; minutes: number } {
+  getGameTime(): { day: number; hours: number; minutes: number; year: number; month: number; dayOfMonth: number } {
     const h = Math.floor(this.gameMinutes / 60);
     const m = this.gameMinutes % 60;
-    return { day: this.gameDays, hours: h, minutes: m };
+    const currentDate = new Date(this.startDate);
+    currentDate.setDate(this.startDate.getDate() + (this.gameDays - 1));
+    return {
+      day: this.gameDays,
+      hours: h,
+      minutes: m,
+      year: currentDate.getFullYear(),
+      month: currentDate.getMonth() + 1,
+      dayOfMonth: currentDate.getDate(),
+    };
   }
 
   getTotalMinutes(): number {

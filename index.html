@@ -6,7 +6,7 @@
     <title>Lemona - The First Playable Agent OS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Press+Start+2P&display=swap" rel="stylesheet" />
     <style>
       :root {
         --bg-dark: rgba(8, 12, 18, 0.98);
@@ -15,12 +15,13 @@
         --text-main: rgba(255, 255, 255, 0.95);
         --text-muted: rgba(255, 255, 255, 0.65);
         --font-pixel: 'Press Start 2P', cursive;
+        --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
       }
 
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
       body {
-        font-family: var(--font-pixel);
+        font-family: var(--font-mono);
         background: var(--bg-dark);
         color: var(--text-main);
         height: 100vh;
@@ -43,7 +44,7 @@
       }
 
       .hero-content h1 {
-        font-size: 10px;
+        font-size: 14px;
         color: var(--text-main);
       }
 
@@ -54,8 +55,8 @@
 
       .btn {
         padding: 6px 12px;
-        font-family: var(--font-pixel);
-        font-size: 8px;
+        font-family: var(--font-mono);
+        font-size: 11px;
         cursor: pointer;
         text-decoration: none;
         border: 2px solid var(--border);
@@ -84,7 +85,7 @@
 
       /* Sidebars */
       .sidebar {
-        width: 260px;
+        width: 200px;
         background: var(--panel-bg);
         border-right: 2px solid var(--border);
         display: flex;
@@ -95,13 +96,13 @@
       .sidebar.right {
         border-right: none;
         border-left: 2px solid var(--border);
-        width: 300px;
+        width: 380px;
       }
 
       .panel-header {
         padding: 12px;
         border-bottom: 2px solid var(--border);
-        font-size: 8px;
+        font-size: 11px;
         color: var(--text-muted);
       }
 
@@ -135,32 +136,6 @@
         object-fit: contain;
       }
 
-      /* Loading Screen */
-      #loading-screen {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--bg-dark);
-        z-index: 9999;
-      }
-
-      .loader-content {
-        text-align: center;
-      }
-
-      .loader-title {
-        font-size: 14px;
-        margin-bottom: 12px;
-        color: var(--text-main);
-      }
-
-      .loader-text {
-        font-size: 8px;
-        color: var(--text-muted);
-      }
-
       /* Agent Cards */
       .agent-card {
         padding: 6px 2px;
@@ -188,13 +163,13 @@
       }
 
       .agent-info h3 {
-        font-size: 8px;
+        font-size: 11px;
         margin-bottom: 4px;
         color: var(--text-main);
       }
 
       .agent-status {
-        font-size: 6px;
+        font-size: 10px;
         color: var(--text-muted);
         display: flex;
         align-items: center;
@@ -209,17 +184,48 @@
 
       .status-dot.busy { background: rgba(255, 200, 100, 0.9); }
 
-      /* Log */
-      .log-entry {
-        font-family: var(--font-pixel);
-        font-size: 6px;
-        padding: 8px 12px;
-        border-bottom: 2px solid var(--border);
-        color: var(--text-muted);
+      /* Activity Log */
+      .panel-content.log-panel {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
       }
 
-      .log-entry span.agent { color: var(--text-main); }
-      .log-entry span.action { color: rgba(255, 255, 255, 0.8); }
+      .log-entry {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        line-height: 1.5;
+        padding: 10px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--text-main);
+        background: rgba(0, 0, 0, 0.2);
+        transition: background 0.15s ease;
+      }
+
+      .log-entry:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .log-entry:nth-child(even) {
+        background: rgba(0, 0, 0, 0.15);
+      }
+
+      .log-entry:nth-child(even):hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .log-entry span.agent {
+        color: #60a5fa;
+        font-weight: 500;
+      }
+
+      .log-entry span.action {
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      .log-entry [style*="color:#3b82f6"] {
+        color: #34d399 !important;
+      }
 
       /* Task Input */
       .task-input-wrapper {
@@ -232,8 +238,8 @@
         width: 100%;
         padding: 10px 12px;
         border: 2px solid var(--border);
-        font-family: var(--font-pixel);
-        font-size: 8px;
+        font-family: var(--font-mono);
+        font-size: 11px;
         background: rgba(0, 0, 0, 0.3);
         color: var(--text-main);
         outline: none;
@@ -249,13 +255,6 @@
     </style>
   </head>
   <body>
-    <div id="loading-screen">
-      <div class="loader-content">
-        <div class="loader-title">Lemona OS</div>
-        <div class="loader-text">Booting up agents...</div>
-      </div>
-    </div>
-
     <!-- Hero Header -->
     <header>
       <div class="hero-content">
@@ -305,7 +304,7 @@
       <!-- Right Sidebar: Terminal / Tasks -->
       <aside class="sidebar right">
         <div class="panel-header">Activity Log</div>
-        <div class="panel-content" style="padding: 0;">
+        <div class="panel-content log-panel">
           <div class="log-entry">
             [System] Lemona OS initialized.
           </div>

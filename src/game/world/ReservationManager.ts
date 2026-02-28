@@ -2,9 +2,13 @@ export class ReservationManager {
   private reservedByPoint = new Map<string, string>();
   private pointsByAgent = new Map<string, Set<string>>();
 
-  tryReserve(pointKey: string, agentId: string): boolean {
+  isReservedByOther(pointKey: string, agentId: string): boolean {
     const owner = this.reservedByPoint.get(pointKey);
-    if (owner && owner !== agentId) {
+    return owner != null && owner !== agentId;
+  }
+
+  tryReserve(pointKey: string, agentId: string): boolean {
+    if (this.isReservedByOther(pointKey, agentId)) {
       return false;
     }
 

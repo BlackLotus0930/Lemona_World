@@ -4,7 +4,7 @@ import { GameView } from './game/GameView';
 async function main() {
   await Assets.load([
     '/assets/map/spritesheet.png',
-    '/assets/user_interface/UI_emotes_animation_16x16.png',
+    '/assets/user_interface/popupemotes.png',
   ]);
 
   const app = new Application();
@@ -26,8 +26,6 @@ async function main() {
 
   const gameView = new GameView(app);
   await gameView.start();
-
-  document.getElementById('loading-screen')?.remove();
 
   // Handle window resize to keep game properly scaled
   window.addEventListener('resize', () => {
