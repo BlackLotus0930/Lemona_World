@@ -39,9 +39,9 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Dorm Boy Beds',
     affordances: ['sleep', 'rest'],
     interactionPoints: [
-      { id: 'dorm1_bed_1', tileX: 24, tileY: 5, facing: 'right', pose: 'lie' },
-      { id: 'dorm1_bed_2', tileX: 24, tileY: 6, facing: 'right', pose: 'lie' },
-      { id: 'dorm1_bed_3', tileX: 23, tileY: 8, facing: 'right', pose: 'lie' },
+      { id: 'dorm1_bed_1', tileX: 22, tileY: 5, facing: 'right', pose: 'lie' },
+      { id: 'dorm1_bed_2', tileX: 23, tileY: 6, facing: 'right', pose: 'lie' },
+      { id: 'dorm1_bed_3', tileX: 22, tileY: 8, facing: 'right', pose: 'lie' },
       { id: 'dorm1_bed_4', tileX: 23, tileY: 9, facing: 'right', pose: 'lie' },
     ],
   },
@@ -61,8 +61,8 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Dorm Girl Beds',
     affordances: ['sleep', 'rest'],
     interactionPoints: [
-      { id: 'dorm2_bed_1', tileX: 45, tileY: 23, facing: 'left', pose: 'lie' },
-      { id: 'dorm2_bed_2', tileX: 45, tileY: 24, facing: 'left', pose: 'lie' },
+      { id: 'dorm2_bed_1', tileX: 45, tileY: 25, facing: 'left', pose: 'lie' },
+      { id: 'dorm2_bed_2', tileX: 45, tileY: 26, facing: 'left', pose: 'lie' },
       { id: 'dorm2_bed_3', tileX: 45, tileY: 29, facing: 'left', pose: 'lie' },
       { id: 'dorm2_bed_4', tileX: 45, tileY: 30, facing: 'left', pose: 'lie' },
     ],
@@ -135,8 +135,8 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Kitchen Appliances',
     affordances: ['clean', 'eat'],
     interactionPoints: [
-      { id: 'kitchen_fridge_1', tileX: 22, tileY: 27, facing: 'up', pose: 'stand' },
-      { id: 'kitchen_stove_1', tileX: 23, tileY: 27, facing: 'up', pose: 'stand' },
+      { id: 'kitchen_fridge_1', tileX: 25, tileY: 27, facing: 'up', pose: 'stand' },
+      { id: 'kitchen_stove_1', tileX: 26, tileY: 27, facing: 'up', pose: 'stand' },
       { id: 'kitchen_sink_1', tileX: 28, tileY: 27, facing: 'up', pose: 'stand' },
       { id: 'kitchen_sink_2', tileX: 29, tileY: 27, facing: 'up', pose: 'stand' },
       { id: 'kitchen_bread_1', tileX: 30, tileY: 27, facing: 'up', pose: 'stand' },
@@ -208,7 +208,7 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Gym Punching Bag',
     affordances: ['exercise'],
     interactionPoints: [
-      { id: 'gym_bag_1', tileX: 40, tileY: 6, facing: 'up', pose: 'stand' },
+      { id: 'gym_bag_1', tileX: 40, tileY: 7, facing: 'up', pose: 'stand' },
     ],
   },
   {

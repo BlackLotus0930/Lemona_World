@@ -33,6 +33,11 @@ const WORK_DESKS = [
 
 const UI_UPDATE_INTERVAL_MS = 200;
 const CAMPUS_FOCUS_ZOOM = 1.24;
+type RightPanelMode = 'dialogues' | 'thoughts';
+type RightPanelEntry = {
+  mode: RightPanelMode;
+  html: string;
+};
 const DEFAULT_BEHAVIOR_CONFIG = {
   deterministicMovement: false,
   socialRadiusTiles: 2,
@@ -74,6 +79,8 @@ export class GameView {
   private planByAgent = new Map<string, AgentPlan>();
   private behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
   private lastReflectionMinute = -1;
+  private rightPanelMode: RightPanelMode = 'dialogues';
+  private rightPanelEntries: RightPanelEntry[] = [];
 
   constructor(app: Application) {
     this.app = app;
@@ -108,6 +115,7 @@ export class GameView {
         }
       });
     }
+    this.setupRightPanelSwitch();
   }
 
   async start() {
@@ -156,7 +164,10 @@ export class GameView {
       if (this.resizeTimer !== null) clearTimeout(this.resizeTimer);
       this.resizeTimer = setTimeout(() => {
         this.resizeTimer = null;
-        this.app.renderer.resize(window.innerWidth, window.innerHeight);
+        const el = document.getElementById('game-container');
+        if (el) {
+          this.app.renderer.resize(el.clientWidth, el.clientHeight);
+        }
         this.layoutWorld();
       }, 80);
     });
@@ -351,38 +362,106 @@ export class GameView {
   }
 
   private logToActivityPanel(message: string): void {
-    const logContainer = document.querySelector('.sidebar.right .panel-content');
-    if (!logContainer) return;
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-    entry.textContent = message;
-    logContainer.appendChild(entry);
-    logContainer.scrollTop = logContainer.scrollHeight;
+    this.appendRightPanelEntry('thoughts', this.escapeHtml(message));
   }
 
   private logProtocolEvent(event: AgentProtocolEvent): void {
+    const agentName = event.agentId ? (this.characterNameMap.get(event.agentId) || event.agentId) : 'System';
+
+    if (event.type === 'AGENT_DIALOGUE' || event.type === 'AGENT_CONVERSATION_START' || event.type === 'AGENT_CONVERSATION_END') {
+      const text = event.dialogue?.text ?? event.summary ?? event.type;
+      this.appendRightPanelEntry(
+        'dialogues',
+        `<span class="agent">${this.escapeHtml(agentName)}</span>: ${this.escapeHtml(text)}`,
+      );
+      return;
+    }
+
+    if (event.type === 'AGENT_THINKING') {
+      this.appendRightPanelEntry(
+        'thoughts',
+        `<span class="agent">${this.escapeHtml(agentName)}</span> thinks: ${this.escapeHtml(event.summary ?? 'Thinking...')}`,
+      );
+      return;
+    }
+
+    if (event.type === 'AGENT_MEMORY') {
+      const thoughtText = event.memory?.content ?? event.summary ?? 'Memory update';
+      this.appendRightPanelEntry(
+        'thoughts',
+        `<span class="agent">${this.escapeHtml(agentName)}</span> recalls: ${this.escapeHtml(thoughtText)}`,
+      );
+      return;
+    }
+
+    if (event.type === 'AGENT_REFLECTION') {
+      this.appendRightPanelEntry(
+        'thoughts',
+        `<span class="agent">${this.escapeHtml(agentName)}</span> reflects: ${this.escapeHtml(event.summary ?? 'Reflecting...')}`,
+      );
+    }
+  }
+
+  private setupRightPanelSwitch(): void {
+    const tabs = Array.from(document.querySelectorAll('.sidebar.right .stream-tab')) as HTMLButtonElement[];
+    if (tabs.length === 0) return;
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => {
+        const mode = tab.dataset.stream === 'thoughts' ? 'thoughts' : 'dialogues';
+        this.rightPanelMode = mode;
+        this.renderRightPanelEntries();
+        tabs.forEach((button) => {
+          button.classList.toggle('active', button === tab);
+        });
+      });
+    }
+    this.renderRightPanelEntries();
+  }
+
+  private appendRightPanelEntry(mode: RightPanelMode, html: string): void {
+    this.rightPanelEntries.push({ mode, html });
+    if (this.rightPanelEntries.length > 250) {
+      this.rightPanelEntries.splice(0, this.rightPanelEntries.length - 250);
+    }
+    if (mode === this.rightPanelMode) {
+      this.renderRightPanelEntries();
+    }
+  }
+
+  private renderRightPanelEntries(): void {
     const logContainer = document.querySelector('.sidebar.right .panel-content');
     if (!logContainer) return;
-    
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-    
-    const agentName = event.agentId ? (this.characterNameMap.get(event.agentId) || event.agentId) : 'System';
-    
-    if (event.type === 'AGENT_TOOL_CALL') {
-      entry.innerHTML = `<span class="agent">${agentName}</span> <span class="action">executed tool</span>: ${event.summary || 'Tool Call'}`;
-    } else if (event.type === 'TASK_CREATED') {
-      entry.innerHTML = `[System] Task created: ${event.summary}`;
-    } else if (event.type === 'TASK_ASSIGNED') {
-      entry.innerHTML = `[System] Task assigned to <span class="agent">${agentName}</span>`;
-    } else if (event.type === 'TASK_DONE') {
-      entry.innerHTML = `<span class="agent">${agentName}</span> <span class="action" style="color:#3b82f6;">completed task</span>: ${event.summary || ''}`;
-    } else {
-      entry.innerHTML = `<span class="agent">${agentName}</span>: ${event.summary || event.type}`;
+    logContainer.innerHTML = '';
+    const entries = this.rightPanelEntries.filter((entry) => entry.mode === this.rightPanelMode);
+
+    if (entries.length === 0) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'log-empty-state';
+      const label = this.rightPanelMode === 'dialogues' ? 'No dialogue yet' : 'No thoughts yet';
+      const hint = this.rightPanelMode === 'dialogues'
+        ? 'Post a task and agent conversations will appear here.'
+        : 'Post a task and agent reflections will appear here.';
+      placeholder.innerHTML = `<strong>${label}</strong>${hint}`;
+      logContainer.appendChild(placeholder);
+      return;
     }
-    
-    logContainer.appendChild(entry);
+
+    for (const entryData of entries) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = entryData.html;
+      logContainer.appendChild(entry);
+    }
     logContainer.scrollTop = logContainer.scrollHeight;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private updateSidebars(): void {
@@ -396,13 +475,12 @@ export class GameView {
       const card = document.createElement('div');
       card.className = 'agent-card';
       
-      const isBusy = status.state !== 'idle_life';
-      const dotClass = isBusy ? 'status-dot busy' : 'status-dot';
-      const statusText = isBusy ? (status.statusText || 'Working') : 'Idle';
+      const stateColor = this.getSidebarStateColor(status);
+      const statusText = status.statusText || 'Idle';
       const profileUrl = `./assets/characters_profile_pictures/${status.agentName}_profile.png`;
       
       card.innerHTML = `
-        <div class="agent-avatar" style="padding:0;overflow:hidden;border-radius:50%;background:#111;">
+        <div class="agent-avatar" style="padding:0;overflow:hidden;border-radius:50%;background:#e5e7eb;">
           <img
             src="${profileUrl}"
             alt="${status.agentName}"
@@ -412,7 +490,7 @@ export class GameView {
         </div>
         <div class="agent-info">
           <h3>${status.agentName}</h3>
-          <div class="agent-status"><span class="${dotClass}"></span> ${statusText}</div>
+          <div class="agent-status" style="color:${stateColor};"><span class="status-dot" style="background:${stateColor};"></span> ${statusText}</div>
         </div>
       `;
       
@@ -425,11 +503,67 @@ export class GameView {
       agentId: character.id,
       agentName: character.name,
       state: character.getRuntimeState(),
-      statusText: character.getStatusText(),
+      statusText: this.getSidebarStatusText(character),
+      currentActivity: character.getCurrentActivity(),
       taskId: character.getActiveTaskId(),
       cooldownProgress: character.getCooldownProgress(),
       debugMetrics: character.getDebugMetrics(),
     }));
+  }
+
+  private getSidebarStatusText(character: Character): string {
+    const runtimeState = character.getRuntimeState();
+
+    if (runtimeState === 'moving_to_desk') return 'Heading to desk';
+    if (runtimeState === 'working') return 'Working';
+    if (runtimeState === 'returning_result') return 'Returning results';
+    if (runtimeState === 'cooldown') return 'Cooldown';
+
+    // idle_life: derive status from their actual scheduled activity.
+    return this.formatActivityStatus(character.getCurrentActivity());
+  }
+
+  private formatActivityStatus(activity: string): string {
+    const labelByActivity: Record<string, string> = {
+      sleep: 'Sleeping',
+      eat: 'Eating',
+      study: 'Studying',
+      exercise: 'Exercising',
+      social: 'Socializing',
+      rest: 'Resting',
+      music: 'Music practice',
+      watch_tv: 'Watching TV',
+      toilet: 'Bathroom',
+      shower: 'Showering',
+      clean: 'Cleaning',
+    };
+    return labelByActivity[activity] ?? 'Idle';
+  }
+
+  private getSidebarStateColor(status: AgentStatusSnapshot): string {
+    if (status.state === 'moving_to_desk') return '#fbbf24';
+    if (status.state === 'working') return '#60a5fa';
+    if (status.state === 'returning_result') return '#c084fc';
+    if (status.state === 'cooldown') return '#a3a3a3';
+
+    return this.getActivityStateColor(status.currentActivity);
+  }
+
+  private getActivityStateColor(activity?: string): string {
+    const colorByActivity: Record<string, string> = {
+      sleep: '#93c5fd',
+      eat: '#f59e0b',
+      study: '#22c55e',
+      exercise: '#ef4444',
+      social: '#f472b6',
+      rest: '#a78bfa',
+      music: '#2dd4bf',
+      watch_tv: '#06b6d4',
+      toilet: '#94a3b8',
+      shower: '#38bdf8',
+      clean: '#f97316',
+    };
+    return activity ? (colorByActivity[activity] ?? '#e5e7eb') : '#e5e7eb';
   }
 
   private createBridgeProvider(): AgentBridgeClient {

@@ -39,15 +39,15 @@ export class AgentTimeline {
       width: 300px;
       max-height: calc(100vh - 24px);
       overflow: auto;
-      background: rgba(10, 8, 18, 0.88);
-      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(0, 0, 0, 0.15);
       border-radius: 10px;
-      color: #f7f2ff;
+      color: rgba(0, 0, 0, 0.9);
       font-family: 'JetBrains Mono', ui-monospace, monospace;
       padding: 10px;
       z-index: 1100;
       backdrop-filter: blur(3px);
-      font-size: 12px;
+      font-size: 13px;
     `;
 
     const header = document.createElement('div');
@@ -83,30 +83,31 @@ export class AgentTimeline {
   appendEvent(event: AgentProtocolEvent): void {
     const item = document.createElement('div');
     item.style.cssText = `
-      border:1px solid rgba(255,255,255,0.10);
+      border:1px solid rgba(0,0,0,0.08);
       border-radius:7px;
       padding:5px 8px;
-      background: rgba(255,255,255,0.03);
+      background: rgba(0,0,0,0.03);
       line-height:1.4;
     `;
 
     const label = EVENT_LABELS[event.type] ?? event.type;
     const color = EVENT_COLORS[event.type] ?? '#999';
     const agentName = event.agentId ? (this.nameMap.get(event.agentId) ?? event.agentId) : '';
-    const time = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const d = new Date(event.timestamp);
+    const time = d.toLocaleString([], { dateStyle: 'short', timeStyle: 'medium', hour12: true });
 
     const topRow = document.createElement('div');
-    topRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:11px;';
-    topRow.innerHTML = `<span style="color:${color};font-weight:600">${escapeHtml(label)}</span><span style="opacity:0.5;font-size:10px">${time}</span>`;
+    topRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:12px;';
+    topRow.innerHTML = `<span style="color:${color};font-weight:600">${escapeHtml(label)}</span><span style="opacity:0.5;font-size:12px">${time}</span>`;
     item.appendChild(topRow);
 
     if (agentName) {
       const agentRow = document.createElement('div');
-      agentRow.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:11px;opacity:0.85;margin-top:3px;';
+      agentRow.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:12px;opacity:0.85;margin-top:3px;';
       
       const avatar = document.createElement('img');
       avatar.src = `./assets/characters_profile_pictures/${agentName}_profile.png`;
-      avatar.style.cssText = 'width:16px;height:16px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.1);';
+      avatar.style.cssText = 'width:16px;height:16px;border-radius:50%;object-fit:cover;border:1px solid rgba(0,0,0,0.12);';
       
       const nameSpan = document.createElement('span');
       nameSpan.textContent = agentName;
@@ -119,7 +120,7 @@ export class AgentTimeline {
 
     if (event.summary) {
       const summaryRow = document.createElement('div');
-      summaryRow.style.cssText = 'font-size:11px;opacity:0.6;margin-top:1px;';
+      summaryRow.style.cssText = 'font-size:12px;opacity:0.6;margin-top:1px;';
       summaryRow.textContent = event.summary;
       item.appendChild(summaryRow);
     }

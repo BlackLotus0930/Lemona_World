@@ -1,5 +1,6 @@
 import { Application, Assets } from 'pixi.js';
 import { GameView } from './game/GameView';
+import { mountAuthHeader } from './ui/AuthHeader';
 
 async function main() {
   await Assets.load([
@@ -9,6 +10,11 @@ async function main() {
 
   const app = new Application();
   
+  const authContainer = document.getElementById('auth-container');
+  if (authContainer instanceof HTMLElement) {
+    mountAuthHeader(authContainer);
+  }
+
   const container = document.getElementById('game-container');
   if (!container) throw new Error('Game container not found');
 
@@ -34,3 +40,5 @@ async function main() {
 }
 
 main().catch(console.error);
+
+

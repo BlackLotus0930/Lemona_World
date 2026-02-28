@@ -99,6 +99,7 @@ const HARD_STUCK_MINUTES = 3.5;
 const TARGET_JITTER_RADIUS = 1;
 const CROWD_SOFT_LIMIT = 1;
 const MOVEMENT_EPSILON = 0.05;
+const SPEECH_BUBBLE_VERTICAL_OFFSET = 5;
 
 export class Character extends Container {
   readonly id: string;
@@ -386,6 +387,8 @@ export class Character extends Container {
     this.speechBubbleText.text = cleanedText;
     this.applySpeechBubbleLayout();
     this.speechBubbleSprite.visible = true;
+    // Speech bubble takes precedence over activity icon.
+    this.clearActivityIcon();
     this.positionSpeechBubble();
   }
 
@@ -635,13 +638,15 @@ export class Character extends Container {
   }
 
   private updateActivityIcon(activity: string | null): void {
+    // Never render both speech and activity bubbles at once.
+    if (this.speechBubbleSprite) {
+      this.clearActivityIcon();
+      return;
+    }
+
     if (activity === this.displayedActivity) return;
     this.displayedActivity = activity;
-
-    if (this.activitySprite) {
-      this.removeChild(this.activitySprite);
-      this.activitySprite = null;
-    }
+    this.clearActivityIcon();
 
     if (!activity) {
       return;
@@ -660,9 +665,20 @@ export class Character extends Container {
 
   private positionSpeechBubble(): void {
     if (!this.speechBubbleSprite) return;
-    const baseY = this.sprite ? -(this.sprite.height * this.sprite.anchor.y) - 4 : -8;
+    // Bubble textures have transparent padding; compensate so visible bubble sits closer to the head.
+    const baseY = this.sprite
+      ? -(this.sprite.height * this.sprite.anchor.y) + SPEECH_BUBBLE_VERTICAL_OFFSET
+      : -4 + SPEECH_BUBBLE_VERTICAL_OFFSET;
     const iconOffset = this.activitySprite ? 18 : 0;
     this.speechBubbleSprite.y = baseY - iconOffset;
+  }
+
+  private clearActivityIcon(): void {
+    if (this.activitySprite) {
+      this.removeChild(this.activitySprite);
+      this.activitySprite = null;
+    }
+    this.displayedActivity = null;
   }
 
   private async loadSpeechBubbleTextures(): Promise<void> {

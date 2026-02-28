@@ -4,18 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lemona - The First Playable Agent OS</title>
+    <link rel="icon" type="image/x-icon" href="/assets/logo/lemona_pixel_logo.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Nunito:wght@600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg-dark: rgba(8, 12, 18, 0.98);
-        --panel-bg: rgba(12, 16, 24, 0.98);
-        --border: rgba(255, 255, 255, 0.35);
-        --text-main: rgba(255, 255, 255, 0.95);
-        --text-muted: rgba(255, 255, 255, 0.65);
+        --bg-dark: #f4f5f7;
+        --panel-bg: #ffffff;
+        --border: rgba(0, 0, 0, 0.18);
+        --text-main: rgba(0, 0, 0, 0.9);
+        --text-muted: rgba(0, 0, 0, 0.55);
         --font-pixel: 'Press Start 2P', cursive;
         --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+        --font-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
       }
 
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,48 +34,171 @@
         image-rendering: crisp-edges;
       }
 
-      /* Hero Section */
+      /* Navbar */
       header {
-        padding: 12px 16px;
+        padding: 6px 20px;
         background: var(--panel-bg);
-        border-bottom: 2px solid var(--border);
+        border-bottom: 1px solid var(--border);
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-shrink: 0;
+        min-height: 40px;
       }
 
-      .hero-content h1 {
-        font-size: 14px;
-        color: var(--text-main);
-      }
-
-      .hero-actions {
+      .navbar-brand {
         display: flex;
+        align-items: center;
         gap: 8px;
+        text-decoration: none;
+        color: var(--text-main);
+        line-height: 1;
       }
 
-      .btn {
-        padding: 6px 12px;
-        font-family: var(--font-mono);
-        font-size: 11px;
-        cursor: pointer;
-        text-decoration: none;
-        border: 2px solid var(--border);
-        background: transparent;
+      .navbar-brand:hover {
         color: var(--text-main);
       }
 
-      .btn:hover {
-        background: rgba(255, 255, 255, 0.08);
+      .navbar-brand .hero-logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        display: block;
       }
 
-      .btn-primary {
-        background: rgba(255, 255, 255, 0.15);
+      .navbar-brand .brand-text {
+        font-family: var(--font-display);
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1;
       }
 
-      .btn-primary:hover {
-        background: rgba(255, 255, 255, 0.22);
+      .navbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .navbar-links {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #auth-container {
+        display: flex;
+        align-items: center;
+      }
+
+      .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 28px;
+        padding: 0 12px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1;
+        color: var(--text-muted);
+        text-decoration: none;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: color 0.15s ease, background 0.15s ease;
+      }
+
+      .nav-link:hover {
+        color: var(--text-main);
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      .nav-link img {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+        filter: invert(1);
+        display: block;
+      }
+
+      .btn-sign-in {
+        padding: 6px 14px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        color: white;
+        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .btn-sign-in:hover {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      }
+
+      .nav-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 600;
+        color: white;
+        overflow: hidden;
+        padding: 0;
+        transition: none;
+      }
+
+      .nav-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .nav-avatar-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        min-width: 160px;
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        padding: 6px;
+        z-index: 100;
+      }
+
+      .nav-avatar-menu-item {
+        display: block;
+        width: 100%;
+        padding: 8px 12px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-main);
+        background: none;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+        text-decoration: none;
+        transition: background 0.15s ease;
+      }
+
+      .nav-avatar-menu-item:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+
+      .nav-avatar-wrap {
+        position: relative;
       }
 
       /* Workspace Layout */
@@ -87,7 +212,7 @@
       .sidebar {
         width: 200px;
         background: var(--panel-bg);
-        border-right: 2px solid var(--border);
+        border-right: 1px solid var(--border);
         display: flex;
         flex-direction: column;
         flex-shrink: 0;
@@ -95,21 +220,76 @@
 
       .sidebar.right {
         border-right: none;
-        border-left: 2px solid var(--border);
+        border-left: 1px solid var(--border);
         width: 380px;
       }
 
       .panel-header {
-        padding: 12px;
-        border-bottom: 2px solid var(--border);
-        font-size: 11px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+        font-weight: 500;
         color: var(--text-muted);
+      }
+
+      .right-panel-header {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .right-panel-title {
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--text-main);
+        margin-bottom: 4px;
+      }
+
+      .right-panel-subtitle {
+        font-size: 11px;
+        line-height: 1.4;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+      }
+
+      .stream-switch {
+        display: flex;
+        gap: 0;
+        background: rgba(0, 0, 0, 0.04);
+        border-radius: 6px;
+        padding: 2px;
+      }
+
+      .stream-tab {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1;
+        padding: 6px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+      }
+
+      .stream-tab:hover {
+        color: var(--text-main);
+      }
+
+      .stream-tab.active {
+        background: white;
+        color: var(--text-main);
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
       }
 
       .panel-content {
         flex: 1;
         overflow-y: auto;
-        padding: 12px;
+        padding: 10px 14px;
       }
 
       /* Game Container */
@@ -120,6 +300,7 @@
         background: #000;
         overflow: hidden;
         position: relative;
+        margin-top: -8px;
       }
 
       #game-container {
@@ -133,7 +314,7 @@
         display: block;
         width: 100% !important;
         height: 100% !important;
-        object-fit: contain;
+        object-fit: cover;
       }
 
       /* Agent Cards */
@@ -149,27 +330,27 @@
       }
 
       .agent-avatar {
-        width: 30px;
-        height: 30px;
-        background: rgba(255, 255, 255, 0.08);
+        width: 32px;
+        height: 32px;
+        background: rgba(0, 0, 0, 0.07);
         border: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 12px;
         color: var(--text-main);
         border-radius: 50%;
         overflow: hidden;
       }
 
       .agent-info h3 {
-        font-size: 11px;
+        font-size: 13px;
         margin-bottom: 4px;
         color: var(--text-main);
       }
 
       .agent-status {
-        font-size: 10px;
+        font-size: 12px;
         color: var(--text-muted);
         display: flex;
         align-items: center;
@@ -179,52 +360,86 @@
       .status-dot {
         width: 6px;
         height: 6px;
-        background: rgba(255, 255, 255, 0.6);
+        background: rgba(0, 0, 0, 0.4);
       }
 
-      .status-dot.busy { background: rgba(255, 200, 100, 0.9); }
+      .status-dot.busy { background: #e59e0b; }
 
       /* Activity Log */
       .panel-content.log-panel {
         padding: 0;
         display: flex;
         flex-direction: column;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+      }
+
+      .panel-content.log-panel::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .panel-content.log-panel::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .panel-content.log-panel::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 999px;
+      }
+
+      .panel-content.log-panel::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.3);
+      }
+
+      .log-empty-state {
+        padding: 20px 12px;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .log-empty-state strong {
+        color: var(--text-main);
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
       }
 
       .log-entry {
         font-family: var(--font-mono);
-        font-size: 11px;
+        font-size: 12px;
         line-height: 1.5;
-        padding: 10px 14px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px 10px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         color: var(--text-main);
-        background: rgba(0, 0, 0, 0.2);
+        background: transparent;
         transition: background 0.15s ease;
       }
 
       .log-entry:hover {
-        background: rgba(255, 255, 255, 0.04);
+        background: rgba(0, 0, 0, 0.03);
       }
 
       .log-entry:nth-child(even) {
-        background: rgba(0, 0, 0, 0.15);
+        background: rgba(0, 0, 0, 0.02);
       }
 
       .log-entry:nth-child(even):hover {
-        background: rgba(255, 255, 255, 0.04);
+        background: rgba(0, 0, 0, 0.04);
       }
 
       .log-entry span.agent {
-        color: #60a5fa;
+        color: #2563eb;
         font-weight: 500;
       }
 
       .log-entry span.action {
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(0, 0, 0, 0.8);
       }
 
       .log-entry [style*="color:#3b82f6"] {
-        color: #34d399 !important;
+        color: #059669 !important;
       }
 
       /* Task Input */
@@ -239,8 +454,8 @@
         padding: 10px 12px;
         border: 2px solid var(--border);
         font-family: var(--font-mono);
-        font-size: 11px;
-        background: rgba(0, 0, 0, 0.3);
+        font-size: 13px;
+        background: #ffffff;
         color: var(--text-main);
         outline: none;
       }
@@ -250,19 +465,163 @@
       }
 
       .task-input:focus {
-        border-color: rgba(255, 255, 255, 0.6);
+        border-color: rgba(0, 0, 0, 0.35);
+      }
+
+      /* Sign-in Modal */
+      .auth-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+      }
+
+      .auth-modal-overlay.open {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .auth-modal {
+        position: relative;
+        background: var(--panel-bg);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        padding: 0;
+        width: 360px;
+        max-width: calc(100vw - 32px);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+        transform: scale(0.96);
+        transition: transform 0.2s ease;
+      }
+
+      .auth-modal-overlay.open .auth-modal {
+        transform: scale(1);
+      }
+
+      .auth-modal-header {
+        padding: 24px 24px 16px;
+        text-align: center;
+      }
+
+      .auth-modal-logo {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        margin-bottom: 12px;
+      }
+
+      .auth-modal-title {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 4px;
+      }
+
+      .auth-modal-subtitle {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.4;
+      }
+
+      .auth-modal-body {
+        padding: 8px 24px 24px;
+      }
+
+      .auth-modal .auth-providers {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .auth-modal .auth-provider-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 14px 20px;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 10px;
+        color: var(--text-main);
+        transition: all 0.15s ease;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+
+      .auth-modal .auth-provider-btn:hover {
+        background: rgba(0, 0, 0, 0.03);
+        border-color: rgba(0, 0, 0, 0.2);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      }
+
+      .auth-modal .auth-provider-btn:active {
+        transform: scale(0.99);
+      }
+
+      .auth-modal .auth-provider-btn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .auth-modal .auth-provider-btn img {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        filter: invert(1);
+      }
+
+      .auth-modal-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.05);
+        border: none;
+        border-radius: 8px;
+        color: var(--text-muted);
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .auth-modal-close:hover {
+        background: rgba(0, 0, 0, 0.08);
+        color: var(--text-main);
       }
     </style>
   </head>
   <body>
-    <!-- Hero Header -->
+    <!-- Navbar -->
     <header>
-      <div class="hero-content">
-        <h1>Lemona</h1>
-      </div>
-      <div class="hero-actions">
-        <a href="#" class="btn btn-outline">View GitHub</a>
-        <a href="#" class="btn btn-primary">Deploy Agents</a>
+      <a href="/" class="navbar-brand">
+        <img src="/assets/logo/lemona_pixel_logo.png" alt="Lemona" class="hero-logo" />
+        <span class="brand-text">Lemona</span>
+      </a>
+      <div class="navbar-actions">
+        <div class="navbar-links">
+          <a href="https://github.com/BlackLotus0930/Lemona_World/tree/main/docs" class="nav-link" target="_blank" rel="noreferrer">Documentation</a>
+          <a href="https://github.com/BlackLotus0930/Lemona_World" class="nav-link" target="_blank" rel="noreferrer"><img src="/assets/logo/github_white_logo.png" alt="" /> Source</a>
+        </div>
+        <div id="auth-container"></div>
       </div>
     </header>
 
@@ -270,7 +629,7 @@
     <div class="workspace">
       <!-- Left Sidebar: -->
       <aside class="sidebar">
-        <div class="panel-header">Roommates</div>
+        <div class="panel-header">Characters</div>
         <div class="panel-content">
           <div class="agent-card">
             <div class="agent-avatar">I</div>
@@ -301,16 +660,21 @@
         <div id="game-container"></div>
       </main>
 
-      <!-- Right Sidebar: Terminal / Tasks -->
+      <!-- Right Sidebar: Activity Feed -->
       <aside class="sidebar right">
-        <div class="panel-header">Activity Log</div>
-        <div class="panel-content log-panel">
-          <div class="log-entry">
-            [System] Lemona OS initialized.
+        <div class="right-panel-header">
+          <div class="right-panel-title">Activity</div>
+          <div class="right-panel-subtitle">What characters are saying and thinking</div>
+          <div class="stream-switch">
+            <button class="stream-tab active" data-stream="dialogues">Dialogue</button>
+            <button class="stream-tab" data-stream="thoughts">Thoughts</button>
           </div>
         </div>
-        <div class="task-input-wrapper">
-          <input type="text" class="task-input" placeholder="Assign a task to your team..." />
+        <div class="panel-content log-panel">
+          <div class="log-empty-state">
+            <strong>Nothing yet</strong>
+            Post a task and watch your agents come to life. Their dialogue and thoughts will appear here.
+          </div>
         </div>
       </aside>
     </div>
@@ -318,3 +682,4 @@
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
+

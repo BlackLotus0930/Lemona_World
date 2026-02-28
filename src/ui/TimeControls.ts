@@ -19,11 +19,11 @@ export class TimeControls {
       flex-direction: column;
       align-items: flex-end;
       padding: 8px 12px;
-      background: rgba(8, 12, 18, 0.95);
-      border: 2px solid rgba(255, 255, 255, 0.4);
-      color: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      color: rgba(0, 0, 0, 0.9);
       font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: 10px;
+      font-size: 11px;
       z-index: 1000;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
@@ -33,11 +33,11 @@ export class TimeControls {
     this.timeEl.style.cssText = 'display: flex; flex-direction: column; align-items: flex-end; gap: 4px;';
 
     this.daySpan = document.createElement('span');
-    this.daySpan.style.cssText = 'font-size: 6px; color: rgba(255, 255, 255, 0.75);';
+    this.daySpan.style.cssText = 'font-size: 13px; color: rgba(0, 0, 0, 0.6);';
     this.timeEl.appendChild(this.daySpan);
 
     this.clockSpan = document.createElement('span');
-    this.clockSpan.style.cssText = 'font-size: 12px; font-variant-numeric: tabular-nums;';
+    this.clockSpan.style.cssText = 'font-size: 13px; font-variant-numeric: tabular-nums;';
     this.timeEl.appendChild(this.clockSpan);
 
     this.container.appendChild(this.timeEl);
@@ -49,11 +49,13 @@ export class TimeControls {
 
   update() {
     const { hours, minutes, year, month, dayOfMonth } = this.schedule.getGameTime();
-    const h = hours.toString().padStart(2, '0');
+    const h12 = hours % 12 || 12;
+    const h = h12.toString().padStart(2, '0');
     const m = minutes.toString().padStart(2, '0');
+    const ampm = hours < 12 ? 'AM' : 'PM';
     const mm = month.toString().padStart(2, '0');
     const dd = dayOfMonth.toString().padStart(2, '0');
     this.daySpan.textContent = `${mm}-${dd}-${year}`;
-    this.clockSpan.textContent = `${h}:${m}`;
+    this.clockSpan.textContent = `${h}:${m} ${ampm}`;
   }
 }

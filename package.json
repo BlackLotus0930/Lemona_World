@@ -12,6 +12,7 @@
     "demo:openclaw": "npm run dev -- --host"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
     "pixi.js": "^8.5.2"
   },
   "devDependencies": {

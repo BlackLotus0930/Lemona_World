@@ -29,20 +29,20 @@ export class TaskPanel {
       width: 300px;
       max-height: calc(100vh - 24px);
       overflow: auto;
-      background: rgba(5, 14, 28, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(0, 0, 0, 0.15);
       border-radius: 10px;
-      color: #e5eefc;
+      color: rgba(0, 0, 0, 0.9);
       font-family: 'JetBrains Mono', ui-monospace, monospace;
       padding: 10px;
       z-index: 1100;
       backdrop-filter: blur(3px);
-      font-size: 12px;
+      font-size: 13px;
     `;
 
     const title = document.createElement('div');
     title.textContent = 'Mission Board';
-    title.style.cssText = 'font-size:14px;font-weight:700;margin-bottom:8px;';
+    title.style.cssText = 'font-size:16px;font-weight:700;margin-bottom:8px;';
     this.root.appendChild(title);
 
     this.input = document.createElement('textarea');
@@ -51,15 +51,15 @@ export class TaskPanel {
       width: 100%;
       min-height: 56px;
       resize: vertical;
-      background: rgba(255,255,255,0.06);
-      color: #f4f7ff;
-      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.04);
+      color: rgba(0,0,0,0.9);
+      border: 1px solid rgba(0,0,0,0.12);
       border-radius: 8px;
       padding: 8px;
       box-sizing: border-box;
       margin-bottom: 6px;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 13px;
     `;
     this.input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -78,9 +78,9 @@ export class TaskPanel {
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 13px;
       color: white;
-      background: linear-gradient(135deg, #4a9eff 0%, #7f8cff 100%);
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
       margin-bottom: 10px;
     `;
     this.submitBtn.addEventListener('click', () => this.submitTask());
@@ -118,7 +118,7 @@ export class TaskPanel {
 
     const titleEl = document.createElement('span');
     titleEl.textContent = label;
-    titleEl.style.cssText = 'font-size:11px;font-weight:700;opacity:0.92;text-transform:uppercase;letter-spacing:0.04em;';
+    titleEl.style.cssText = 'font-size:12px;font-weight:700;opacity:0.92;text-transform:uppercase;letter-spacing:0.04em;';
     header.appendChild(titleEl);
 
     const arrow = document.createElement('span');
@@ -147,7 +147,7 @@ export class TaskPanel {
     if (tasks.length === 0) {
       const item = document.createElement('div');
       item.textContent = 'No tasks yet';
-      item.style.cssText = 'opacity:0.5;font-size:11px;padding:2px 0;';
+      item.style.cssText = 'opacity:0.5;font-size:13px;padding:2px 0;';
       this.tasksList.appendChild(item);
       return;
     }
@@ -155,10 +155,10 @@ export class TaskPanel {
     tasks.slice(0, 10).forEach((task) => {
       const item = document.createElement('div');
       item.style.cssText = `
-        border: 1px solid rgba(255,255,255,0.10);
-        border-radius: 7px;
-        padding: 6px 8px;
-        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(0,0,0,0.08);
+          border-radius: 7px;
+          padding: 6px 8px;
+          background: rgba(0,0,0,0.02);
       `;
 
       const titleRow = document.createElement('div');
@@ -167,7 +167,7 @@ export class TaskPanel {
       item.appendChild(titleRow);
 
       const statusRow = document.createElement('div');
-      statusRow.style.cssText = 'opacity:0.7;font-size:11px;';
+      statusRow.style.cssText = 'opacity:0.7;font-size:12px;';
       const statusColor = STATUS_COLORS[task.status] ?? '#999';
       statusRow.innerHTML = `<span style="color:${statusColor};font-weight:600">${task.status}</span>`;
       item.appendChild(statusRow);
@@ -175,7 +175,7 @@ export class TaskPanel {
       const detail = task.resultSummary ?? task.errorMessage;
       if (detail) {
         const detailRow = document.createElement('div');
-        detailRow.style.cssText = 'opacity:0.6;font-size:11px;margin-top:2px;';
+        detailRow.style.cssText = 'opacity:0.6;font-size:12px;margin-top:2px;';
         detailRow.textContent = detail;
         item.appendChild(detailRow);
       }
@@ -207,7 +207,7 @@ export class TaskPanel {
 
         const avatar = document.createElement('img');
         avatar.src = `./assets/characters_profile_pictures/${status.agentName}_profile.png`;
-        avatar.style.cssText = 'width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.5);flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.2);';
+        avatar.style.cssText = 'width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.06);flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.1);';
         item.appendChild(avatar);
 
         const infoCol = document.createElement('div');
@@ -218,7 +218,7 @@ export class TaskPanel {
 
         const nameEl = document.createElement('span');
         nameEl.textContent = status.agentName;
-        nameEl.style.cssText = 'font-weight:700;font-size:13px;';
+        nameEl.style.cssText = 'font-weight:700;font-size:14px;';
         topRow.appendChild(nameEl);
 
         const stateEl = document.createElement('span');
@@ -228,12 +228,12 @@ export class TaskPanel {
 
         const statusLine = document.createElement('div');
         statusLine.className = 'agent-status-text';
-        statusLine.style.cssText = 'opacity:0.75;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        statusLine.style.cssText = 'opacity:0.75;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         infoCol.appendChild(statusLine);
 
         const barOuter = document.createElement('div');
         barOuter.className = 'agent-cooldown-bar';
-        barOuter.style.cssText = 'height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:5px;overflow:hidden;display:none;';
+        barOuter.style.cssText = 'height:4px;background:rgba(0,0,0,0.08);border-radius:2px;margin-top:5px;overflow:hidden;display:none;';
         const barInner = document.createElement('div');
         barInner.className = 'agent-cooldown-inner';
         barInner.style.cssText = 'height:100%;width:0%;border-radius:2px;transition:width 0.2s;';
@@ -259,7 +259,7 @@ export class TaskPanel {
       
       if (stateEl) {
         stateEl.textContent = FRIENDLY_STATE[status.state] ?? status.state;
-        stateEl.style.cssText = `font-size:10px;color:${stateColor};opacity:0.9;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;`;
+        stateEl.style.cssText = `font-size:11px;color:${stateColor};opacity:0.9;font-weight:600;text-transform:uppercase;letter-spacing:0.02em;`;
       }
       
       if (statusLine) {

@@ -36,7 +36,7 @@ export interface ScheduleWaypoint {
 
 export const CHARACTERS: CharacterConfig[] = [
   {
-    spritePath: '/assets/characters/Iris.png',
+    spritePath: '/assets/characters_sprite_sheet/Iris.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,
@@ -56,7 +56,7 @@ export const CHARACTERS: CharacterConfig[] = [
     ],
   },
   {
-    spritePath: '/assets/characters/Fern.png',
+    spritePath: '/assets/characters_sprite_sheet/Fern.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,
@@ -75,7 +75,7 @@ export const CHARACTERS: CharacterConfig[] = [
     ],
   },
   {
-    spritePath: '/assets/characters/Mio.png',
+    spritePath: '/assets/characters_sprite_sheet/Mio.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,
@@ -94,7 +94,7 @@ export const CHARACTERS: CharacterConfig[] = [
     ],
   },
   {
-    spritePath: '/assets/characters/Momo.png',
+    spritePath: '/assets/characters_sprite_sheet/Momo.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,
@@ -113,7 +113,7 @@ export const CHARACTERS: CharacterConfig[] = [
     ],
   },
   {
-    spritePath: '/assets/characters/Edward.png',
+    spritePath: '/assets/characters_sprite_sheet/Edward.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,
@@ -132,7 +132,7 @@ export const CHARACTERS: CharacterConfig[] = [
     ],
   },
   {
-    spritePath: '/assets/characters/Saki.png',
+    spritePath: '/assets/characters_sprite_sheet/Saki.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,
@@ -152,7 +152,7 @@ export const CHARACTERS: CharacterConfig[] = [
     ],
   },
   {
-    spritePath: '/assets/characters/Rina.png',
+    spritePath: '/assets/characters_sprite_sheet/Rina.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,
@@ -171,7 +171,7 @@ export const CHARACTERS: CharacterConfig[] = [
     ],
   },
   {
-    spritePath: '/assets/characters/Zero.png',
+    spritePath: '/assets/characters_sprite_sheet/Zero.png',
     spriteColumns: 3,
     spriteRows: 4,
     spriteFps: 8,

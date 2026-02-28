@@ -71,6 +71,7 @@ export interface AgentStatusSnapshot {
   agentName: string;
   state: AgentRuntimeState;
   statusText: string;
+  currentActivity?: string;
   taskId?: TaskId;
   cooldownProgress?: number;
   debugMetrics?: {
