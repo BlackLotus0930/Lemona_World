@@ -32,7 +32,7 @@ const WORK_DESKS = [
 ];
 
 const UI_UPDATE_INTERVAL_MS = 200;
-const CAMPUS_FOCUS_ZOOM = 1.24;
+const CAMPUS_FOCUS_ZOOM = 1.34;
 type RightPanelMode = 'dialogues' | 'thoughts';
 type RightPanelEntry = {
   mode: RightPanelMode;
@@ -81,6 +81,10 @@ export class GameView {
   private lastReflectionMinute = -1;
   private rightPanelMode: RightPanelMode = 'dialogues';
   private rightPanelEntries: RightPanelEntry[] = [];
+  private selectedCharacterId: string | null = null;
+  private sidebarViewMode: 'list' | 'detail' | null = null;
+  private sidebarRenderSignature = '';
+  private relationshipAffinity = new Map<string, number>();
 
   constructor(app: Application) {
     this.app = app;
@@ -116,6 +120,12 @@ export class GameView {
       });
     }
     this.setupRightPanelSwitch();
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && this.selectedCharacterId) {
+        this.selectedCharacterId = null;
+        this.updateSidebars();
+      }
+    });
   }
 
   async start() {
@@ -467,34 +477,177 @@ export class GameView {
   private updateSidebars(): void {
     const rosterContainer = document.querySelector('.sidebar .panel-content');
     if (!rosterContainer) return;
-    
-    rosterContainer.innerHTML = '';
     const statuses = this.getAgentStatuses();
-    
+
+    if (this.selectedCharacterId) {
+      const selectedStatus = statuses.find((entry) => entry.agentId === this.selectedCharacterId);
+      if (!selectedStatus) {
+        this.selectedCharacterId = null;
+      } else {
+        const memories = this.memoryByAgent.get(selectedStatus.agentId)?.length ?? 0;
+        const relationKeys = statuses
+          .filter((s) => s.agentId !== selectedStatus.agentId)
+          .map((s) => `${selectedStatus.agentId}_${s.agentId}`)
+          .map((k) => `${k}:${this.relationshipAffinity.get(k) ?? 0}`)
+          .join(',');
+        const detailSignature = this.buildDetailSidebarSignature(selectedStatus, memories, relationKeys);
+        if (this.sidebarViewMode === 'detail' && this.sidebarRenderSignature === detailSignature) {
+          return;
+        }
+        this.sidebarViewMode = 'detail';
+        this.sidebarRenderSignature = detailSignature;
+        this.renderCharacterDetailPanel(
+          rosterContainer as HTMLElement,
+          selectedStatus,
+          memories,
+          statuses,
+        );
+        return;
+      }
+    }
+
+    const rosterSignature = this.buildRosterSidebarSignature(statuses);
+    if (this.sidebarViewMode === 'list' && this.sidebarRenderSignature === rosterSignature) {
+      return;
+    }
+    this.sidebarViewMode = 'list';
+    this.sidebarRenderSignature = rosterSignature;
+
+    const prevScrollTop = rosterContainer.scrollTop;
+    rosterContainer.innerHTML = '';
+
     for (const status of statuses) {
       const card = document.createElement('div');
       card.className = 'agent-card';
-      
+      card.dataset.agentId = status.agentId;
+
       const stateColor = this.getSidebarStateColor(status);
       const statusText = status.statusText || 'Idle';
       const profileUrl = `./assets/characters_profile_pictures/${status.agentName}_profile.png`;
-      
+
       card.innerHTML = `
         <div class="agent-avatar" style="padding:0;overflow:hidden;border-radius:50%;background:#e5e7eb;">
           <img
             src="${profileUrl}"
-            alt="${status.agentName}"
+            alt="${this.escapeHtml(status.agentName)}"
             style="width:100%;height:100%;object-fit:cover;display:block;"
-            onerror="this.style.display='none'; this.parentElement.textContent='${status.agentName.charAt(0)}'; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center';"
+            onerror="this.style.display='none'; this.parentElement.textContent='${this.escapeHtml(status.agentName.charAt(0))}'; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center';"
           />
         </div>
         <div class="agent-info">
-          <h3>${status.agentName}</h3>
-          <div class="agent-status" style="color:${stateColor};"><span class="status-dot" style="background:${stateColor};"></span> ${statusText}</div>
+          <h3>${this.escapeHtml(status.agentName)}</h3>
+          <div class="agent-status" style="color:${stateColor};"><span class="status-dot" style="background:${stateColor};"></span> ${this.escapeHtml(statusText)}</div>
         </div>
       `;
-      
+
+      card.addEventListener('click', () => {
+        this.selectedCharacterId = status.agentId;
+        this.updateSidebars();
+      });
+
       rosterContainer.appendChild(card);
+    }
+    rosterContainer.scrollTop = prevScrollTop;
+  }
+
+  private renderCharacterDetailPanel(
+    container: HTMLElement,
+    status: AgentStatusSnapshot,
+    memories: number,
+    statuses: AgentStatusSnapshot[],
+  ): void {
+    const profileUrl = `./assets/characters_profile_pictures/${status.agentName}_profile.png`;
+    const stateColor = this.getSidebarStateColor(status);
+    const description = this.getCharacterDescription(status.agentId);
+    const mood = 0;
+    const energy = 0;
+    const stress = 0;
+    const activityLabel = this.formatActivityStatus(status.currentActivity ?? 'rest');
+    const relationships = statuses
+      .filter((entry) => entry.agentId !== status.agentId)
+      .map((entry) => ({
+        name: entry.agentName,
+        value: this.getRelationshipAffinity(status.agentId, entry.agentId),
+      }))
+      .filter((entry) => entry.value !== 0);
+
+    const relationshipHtml = relationships
+      .map((entry) => {
+        const tone = entry.value > 0 ? 'positive' : 'negative';
+        const label = this.getRelationshipLabel(entry.value);
+        return `<div class="character-detail-relationship-item">
+          <span class="character-detail-relationship-name">${this.escapeHtml(entry.name)}</span>
+          <span class="character-detail-relationship-value ${tone}">${this.escapeHtml(label)}</span>
+        </div>`;
+      })
+      .join('');
+
+    const oldDetailContent = container.querySelector('.character-detail-content') as HTMLElement | null;
+    const previousScrollTop = oldDetailContent?.scrollTop ?? 0;
+
+    container.innerHTML = `
+      <div class="character-detail">
+        <div class="character-detail-header">
+          <button type="button" class="character-detail-back" aria-label="Back to characters"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <span class="character-detail-header-label">Character details</span>
+        </div>
+
+        <div class="character-detail-content">
+          <div class="character-detail-profile">
+            <div class="character-detail-avatar">
+              <span class="avatar-fallback">${this.escapeHtml(status.agentName.charAt(0))}</span>
+              <img src="${profileUrl}" alt="${this.escapeHtml(status.agentName)}" onerror="this.style.display='none';" />
+            </div>
+            <div class="character-detail-meta">
+              <h2>${this.escapeHtml(status.agentName)}</h2>
+              <div class="character-description">${this.escapeHtml(description)}</div>
+            </div>
+          </div>
+
+          <div class="character-detail-section">
+            <div class="character-detail-section-title">State</div>
+            <div class="character-detail-stat-row">
+              <span class="character-detail-stat-label">Activity</span>
+              <span class="character-detail-stat-value" style="color:${stateColor}">${this.escapeHtml(activityLabel)}</span>
+            </div>
+            <div class="character-detail-stat-row">
+              <span class="character-detail-stat-label">Mood</span>
+              <span class="character-detail-stat-value">${mood}</span>
+            </div>
+            <div class="character-detail-stat-row">
+              <span class="character-detail-stat-label">Energy</span>
+              <span class="character-detail-stat-value">${energy}</span>
+            </div>
+            <div class="character-detail-stat-row">
+              <span class="character-detail-stat-label">Stress</span>
+              <span class="character-detail-stat-value">${stress}</span>
+            </div>
+          </div>
+
+          <div class="character-detail-section">
+            <div class="character-detail-section-title">Relationships</div>
+            ${relationshipHtml}
+          </div>
+
+          <div class="character-detail-section">
+            <div class="character-detail-section-title">Memory</div>
+            <div class="character-detail-memory-placeholder">${memories} memory entr${memories === 1 ? 'y' : 'ies'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const backButton = container.querySelector('.character-detail-back');
+    if (backButton) {
+      backButton.addEventListener('click', () => {
+        this.selectedCharacterId = null;
+        this.updateSidebars();
+      });
+    }
+
+    const newDetailContent = container.querySelector('.character-detail-content') as HTMLElement | null;
+    if (newDetailContent) {
+      newDetailContent.scrollTop = previousScrollTop;
     }
   }
 
@@ -509,6 +662,63 @@ export class GameView {
       cooldownProgress: character.getCooldownProgress(),
       debugMetrics: character.getDebugMetrics(),
     }));
+  }
+
+  private buildRosterSidebarSignature(statuses: AgentStatusSnapshot[]): string {
+    return statuses
+      .map((status) => `${status.agentId}:${status.state}:${status.currentActivity ?? ''}:${status.statusText ?? ''}`)
+      .join('|');
+  }
+
+  private buildDetailSidebarSignature(
+    status: AgentStatusSnapshot,
+    memories: number,
+    relationKeys: string,
+  ): string {
+    return [
+      status.agentId,
+      status.state,
+      status.currentActivity ?? '',
+      status.statusText ?? '',
+      String(memories),
+      relationKeys,
+    ].join('|');
+  }
+
+  private getCharacterDescription(agentId: string): string {
+    const byId: Record<string, string> = {
+      npc1: 'Curious planner and quiet observer.',
+      npc2: 'Warm social connector with sharp instincts.',
+      npc3: 'Calm helper who keeps everyone grounded.',
+      npc4: 'Energetic organizer that keeps momentum high.',
+      npc5: 'Focused achiever with competitive drive.',
+      npc6: 'Creative mood-maker with playful humor.',
+      npc7: 'Reflective dreamer who notices small details.',
+      npc8: 'Reserved analyst who thinks before acting.',
+    };
+    return byId[agentId] ?? 'Resident of the school dorm simulation.';
+  }
+
+  getRelationshipAffinity(fromId: string, toId: string): number {
+    const key = `${fromId}_${toId}`;
+    return this.relationshipAffinity.get(key) ?? 0;
+  }
+
+  setRelationshipAffinity(fromId: string, toId: string, value: number): void {
+    const key = `${fromId}_${toId}`;
+    const clamped = Math.max(-100, Math.min(100, value));
+    this.relationshipAffinity.set(key, clamped);
+  }
+
+  private getRelationshipLabel(value: number): string {
+    if (value >= 80) return 'Close friend';
+    if (value >= 50) return 'Friend';
+    if (value >= 20) return 'Acquaintance';
+    if (value > 0) return 'Friendly';
+    if (value <= -80) return 'Hostile';
+    if (value <= -50) return 'Rival';
+    if (value <= -20) return 'Tense';
+    return 'Distant';
   }
 
   private getSidebarStatusText(character: Character): string {

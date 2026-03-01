@@ -61,8 +61,8 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Dorm Girl Beds',
     affordances: ['sleep', 'rest'],
     interactionPoints: [
-      { id: 'dorm2_bed_1', tileX: 45, tileY: 25, facing: 'left', pose: 'lie' },
-      { id: 'dorm2_bed_2', tileX: 45, tileY: 26, facing: 'left', pose: 'lie' },
+      { id: 'dorm2_bed_1', tileX: 45, tileY: 26, facing: 'left', pose: 'lie' },
+      { id: 'dorm2_bed_2', tileX: 45, tileY: 27, facing: 'left', pose: 'lie' },
       { id: 'dorm2_bed_3', tileX: 45, tileY: 29, facing: 'left', pose: 'lie' },
       { id: 'dorm2_bed_4', tileX: 45, tileY: 30, facing: 'left', pose: 'lie' },
     ],
@@ -81,13 +81,19 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
   {
     id: 'class1_desks',
     roomId: 'class1',
-    name: 'Class 1 Desks',
+    name: 'Class 1 Tables and Chairs',
     affordances: ['study', 'work'],
     interactionPoints: [
-      { id: 'class1_seat_a', tileX: 14, tileY: 8, facing: 'right', pose: 'sit' },
-      { id: 'class1_seat_b', tileX: 16, tileY: 8, facing: 'right', pose: 'sit' },
-      { id: 'class1_seat_c', tileX: 14, tileY: 10, facing: 'right', pose: 'sit' },
-      { id: 'class1_seat_d', tileX: 16, tileY: 10, facing: 'right', pose: 'sit' },
+      // Updated from map object chairs (3x3 seating in class 1).
+      { id: 'class1_seat_a', tileX: 12, tileY: 7, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_b', tileX: 14, tileY: 7, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_c', tileX: 16, tileY: 7, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_d', tileX: 12, tileY: 9, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_e', tileX: 14, tileY: 9, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_f', tileX: 16, tileY: 9, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_g', tileX: 12, tileY: 11, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_h', tileX: 14, tileY: 11, facing: 'right', pose: 'sit' },
+      { id: 'class1_seat_i', tileX: 16, tileY: 11, facing: 'right', pose: 'sit' },
     ],
     queuePoints: [{ id: 'class1_queue_1', tileX: 12, tileY: 8 }],
   },
@@ -167,8 +173,8 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
       { id: 'hall_sofa_3', tileX: 25, tileY: 17, facing: 'right', pose: 'sit' },
       { id: 'hall_sofa_4', tileX: 26, tileY: 17, facing: 'right', pose: 'sit' },
       // Sofa 109: vertical (303.5,277 24.5x59.5) - L-corner, tiles (18-20, 17-21), facing right
-      { id: 'hall_sofa_5', tileX: 19, tileY: 18, facing: 'right', pose: 'sit' },
-      { id: 'hall_sofa_6', tileX: 19, tileY: 20, facing: 'right', pose: 'sit' },
+      { id: 'hall_sofa_5', tileX: 20, tileY: 18, facing: 'right', pose: 'sit' },
+      { id: 'hall_sofa_6', tileX: 20, tileY: 20, facing: 'right', pose: 'sit' },
       // sofa_chair 207: (335,306 16x12) - small chair, tile (21,19), facing up
       { id: 'hall_sofa_7', tileX: 21, tileY: 19, facing: 'up', pose: 'sit' },
     ],

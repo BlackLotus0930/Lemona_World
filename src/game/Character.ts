@@ -146,6 +146,7 @@ export class Character extends Container {
   private activitySprite: Sprite | null = null;
   private singleLineSpeechBubbleTexture: Texture | null = null;
   private multiLineSpeechBubbleTexture: Texture | null = null;
+  private speechBubbleContainer: Container | null = null;
   private speechBubbleSprite: Sprite | null = null;
   private speechBubbleText: Text | null = null;
   private speechBubbleVariant: SpeechBubbleVariant = 'single';
@@ -365,7 +366,8 @@ export class Character extends Container {
     if (!texture) return;
 
     this.speechBubbleMinutesLeft = Math.max(this.speechBubbleMinutesLeft, durationMinutes);
-    if (!this.speechBubbleSprite || !this.speechBubbleText) {
+    if (!this.speechBubbleContainer || !this.speechBubbleSprite || !this.speechBubbleText) {
+      this.speechBubbleContainer = new Container();
       this.speechBubbleSprite = new Sprite(texture);
       this.speechBubbleSprite.anchor.set(0.5, 1);
       this.speechBubbleSprite.roundPixels = true;
@@ -378,15 +380,16 @@ export class Character extends Container {
         }),
       });
       this.speechBubbleText.anchor.set(0.5, 0.5);
-      this.speechBubbleSprite.addChild(this.speechBubbleText);
-      this.addChild(this.speechBubbleSprite);
+      this.speechBubbleContainer.addChild(this.speechBubbleSprite);
+      this.speechBubbleContainer.addChild(this.speechBubbleText);
+      this.addChild(this.speechBubbleContainer);
     }
 
     this.speechBubbleVariant = variant;
     this.speechBubbleSprite.texture = texture;
     this.speechBubbleText.text = cleanedText;
     this.applySpeechBubbleLayout();
-    this.speechBubbleSprite.visible = true;
+    this.speechBubbleContainer.visible = true;
     // Speech bubble takes precedence over activity icon.
     this.clearActivityIcon();
     this.positionSpeechBubble();
@@ -394,15 +397,15 @@ export class Character extends Container {
 
   hideSpeechBubble(): void {
     this.speechBubbleMinutesLeft = 0;
-    if (!this.speechBubbleSprite) return;
+    if (!this.speechBubbleContainer) return;
     if (this.speechBubbleText) {
-      this.speechBubbleSprite.removeChild(this.speechBubbleText);
       this.speechBubbleText.destroy();
       this.speechBubbleText = null;
     }
-    this.removeChild(this.speechBubbleSprite);
-    this.speechBubbleSprite.destroy();
     this.speechBubbleSprite = null;
+    this.removeChild(this.speechBubbleContainer);
+    this.speechBubbleContainer.destroy();
+    this.speechBubbleContainer = null;
   }
 
   getRuntimeState(): AgentRuntimeState {
@@ -664,13 +667,13 @@ export class Character extends Container {
   }
 
   private positionSpeechBubble(): void {
-    if (!this.speechBubbleSprite) return;
+    if (!this.speechBubbleContainer) return;
     // Bubble textures have transparent padding; compensate so visible bubble sits closer to the head.
     const baseY = this.sprite
       ? -(this.sprite.height * this.sprite.anchor.y) + SPEECH_BUBBLE_VERTICAL_OFFSET
       : -4 + SPEECH_BUBBLE_VERTICAL_OFFSET;
     const iconOffset = this.activitySprite ? 18 : 0;
-    this.speechBubbleSprite.y = baseY - iconOffset;
+    this.speechBubbleContainer.y = baseY - iconOffset;
   }
 
   private clearActivityIcon(): void {
@@ -702,7 +705,7 @@ export class Character extends Container {
   }
 
   private applySpeechBubbleLayout(): void {
-    if (!this.speechBubbleSprite || !this.speechBubbleText) return;
+    if (!this.speechBubbleContainer || !this.speechBubbleSprite || !this.speechBubbleText) return;
     const layout = BUBBLE_LAYOUT[this.speechBubbleVariant];
     const bubbleTextureWidth = this.speechBubbleSprite.texture.width;
     const bubbleTextureHeight = this.speechBubbleSprite.texture.height;
@@ -716,6 +719,7 @@ export class Character extends Container {
       breakWords: true,
     });
     this.speechBubbleText.style = textStyle;
+    this.speechBubbleText.x = 0;
     this.speechBubbleText.y = -bubbleTextureHeight * layout.textCenterYRatio;
 
     let bubbleScale = layout.scale;
@@ -728,7 +732,9 @@ export class Character extends Container {
       // Gradually enlarge multiline bubbles so long dialogue stays readable.
       bubbleScale = Math.min(layout.scale * 1.35, layout.scale * (1 + extraLines * 0.1));
     }
-    this.speechBubbleSprite.scale.set(bubbleScale);
+    // Keep bubble and text in the same coordinate space so text stays inside after scaling.
+    this.speechBubbleSprite.scale.set(1);
+    this.speechBubbleContainer.scale.set(bubbleScale);
   }
 
   getDisplayPosition(): { x: number; y: number } {

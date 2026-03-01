@@ -84,7 +84,7 @@ function createSignInModal(
   githubBtn.type = 'button';
   githubBtn.className = 'auth-provider-btn';
   const ghImg = document.createElement('img');
-  ghImg.src = '/assets/logo/github_white_logo.png';
+  ghImg.src = '/assets/logo/github_logo.png';
   ghImg.alt = '';
   githubBtn.append(ghImg, document.createTextNode(' Sign in with GitHub'));
   providers.appendChild(githubBtn);

@@ -76,13 +76,13 @@
       .navbar-actions {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 18px;
       }
 
       .navbar-links {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 3px;
       }
 
       #auth-container {
@@ -118,8 +118,21 @@
         width: 16px;
         height: 16px;
         object-fit: contain;
-        filter: invert(1);
         display: block;
+      }
+
+      .nav-link img.nav-icon-doc {
+        width: 12px;
+        height: 12px;
+      }
+
+      .nav-link img.nav-icon-github {
+        width: 19px;
+        height: 19px;
+      }
+
+      .nav-link:has(.nav-icon-github) {
+        gap: 4px;
       }
 
       .btn-sign-in {
@@ -210,7 +223,7 @@
 
       /* Sidebars */
       .sidebar {
-        width: 200px;
+        width: 210px;
         background: var(--panel-bg);
         border-right: 1px solid var(--border);
         display: flex;
@@ -224,8 +237,8 @@
         width: 380px;
       }
 
-      .panel-header {
-        padding: 10px 14px;
+      .sidebar:not(.right) .panel-header {
+        padding: 10px 14px 10px 10px;
         border-bottom: 1px solid var(--border);
         font-size: 12px;
         font-weight: 500;
@@ -290,6 +303,37 @@
         flex: 1;
         overflow-y: auto;
         padding: 10px 14px;
+      }
+
+      .sidebar:not(.right) .panel-content {
+        padding: 10px 6px 10px 10px;
+      }
+
+      .sidebar:not(.right) .panel-content,
+      .character-detail-content {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+      }
+
+      .sidebar:not(.right) .panel-content::-webkit-scrollbar,
+      .character-detail-content::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .sidebar:not(.right) .panel-content::-webkit-scrollbar-track,
+      .character-detail-content::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .sidebar:not(.right) .panel-content::-webkit-scrollbar-thumb,
+      .character-detail-content::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 999px;
+      }
+
+      .sidebar:not(.right) .panel-content::-webkit-scrollbar-thumb:hover,
+      .character-detail-content::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.3);
       }
 
       /* Game Container */
@@ -364,6 +408,203 @@
       }
 
       .status-dot.busy { background: #e59e0b; }
+
+      .agent-card {
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+
+      .agent-card:hover {
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      /* Character Detail Panel */
+      .character-detail {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .character-detail-header {
+        flex-shrink: 0;
+        margin-left: -10px;
+        padding: 10px 14px 10px 10px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .character-detail-header-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        line-height: 1;
+      }
+
+      .character-detail-back {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.03);
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 0;
+        transition: all 0.15s ease;
+      }
+
+      .character-detail-back svg {
+        flex-shrink: 0;
+      }
+
+      .character-detail-back:hover {
+        background: rgba(0, 0, 0, 0.1);
+        color: var(--text-main);
+      }
+
+      .character-detail-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 8px 12px 10px;
+      }
+
+      .character-detail-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+      }
+
+      .character-detail-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        flex-shrink: 0;
+        position: relative;
+      }
+
+      .character-detail-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        position: absolute;
+        inset: 0;
+      }
+
+      .character-detail-avatar .avatar-fallback {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .character-detail-meta h2 {
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 2px;
+      }
+
+      .character-description {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        line-height: 1.35;
+      }
+
+      .character-detail-meta .current-status {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .character-detail-section {
+        margin-top: 10px;
+        margin-left: -10px;
+        padding: 10px 0 0 10px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      .character-detail-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+
+      .character-detail-stat-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px 0;
+        font-size: 12px;
+      }
+
+      .character-detail-stat-label {
+        color: var(--text-muted);
+      }
+
+      .character-detail-stat-value {
+        font-weight: 500;
+        color: var(--text-main);
+      }
+
+      .character-detail-relationship-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 2px;
+        font-size: 12px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      }
+
+      .character-detail-relationship-item:last-child {
+        border-bottom: none;
+      }
+
+      .character-detail-relationship-name {
+        color: var(--text-main);
+      }
+
+      .character-detail-relationship-value {
+        font-weight: 500;
+        min-width: 36px;
+        text-align: right;
+      }
+
+      .character-detail-relationship-value.positive {
+        color: #16a34a;
+      }
+
+      .character-detail-relationship-value.negative {
+        color: #dc2626;
+      }
+
+      .character-detail-relationship-value.neutral {
+        color: var(--text-muted);
+      }
+
+      .character-detail-memory-placeholder {
+        font-size: 12px;
+        color: var(--text-muted);
+        padding: 2px 0 0;
+      }
 
       /* Activity Log */
       .panel-content.log-panel {
@@ -618,8 +859,8 @@
       </a>
       <div class="navbar-actions">
         <div class="navbar-links">
-          <a href="https://github.com/BlackLotus0930/Lemona_World/tree/main/docs" class="nav-link" target="_blank" rel="noreferrer">Documentation</a>
-          <a href="https://github.com/BlackLotus0930/Lemona_World" class="nav-link" target="_blank" rel="noreferrer"><img src="/assets/logo/github_white_logo.png" alt="" /> Source</a>
+          <a href="https://github.com/BlackLotus0930/Lemona_World/tree/main/docs" class="nav-link" target="_blank" rel="noreferrer"><img src="/assets/icons/documentation_icon.png" alt="" class="nav-icon-doc" /> Documentation</a>
+          <a href="https://github.com/BlackLotus0930/Lemona_World" class="nav-link" target="_blank" rel="noreferrer"><img src="/assets/icons/github_icon.png" alt="" class="nav-icon-github" /> Source</a>
         </div>
         <div id="auth-container"></div>
       </div>

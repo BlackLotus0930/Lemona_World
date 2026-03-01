@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="58" height="36" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="238">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="58" height="36" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="279">
  <layer id="1" name="Tile Layer 1" width="58" height="36">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -41,7 +41,7 @@
 </data>
  </layer>
  <imagelayer id="8" name="Image Layer 2">
-  <image source="map (3).png" width="928" height="576"/>
+  <image source="map (4).png" width="928" height="576"/>
  </imagelayer>
  <objectgroup id="4" name="Object Layer_Rooms">
   <object id="24" name="class1" type="room" x="175.5" y="95" width="169.5" height="112.5"/>
@@ -62,28 +62,15 @@
   <object id="118" name="class_table" type="table" x="273" y="433" width="15" height="20.5"/>
   <object id="119" name="class_table" type="table" x="241" y="463.5" width="15" height="24"/>
   <object id="120" name="class_table" type="table" x="273.5" y="464.5" width="15.5" height="23.5"/>
-  <object id="122" name="class_chair" type="chair" x="255.5" y="432" width="14" height="21.5"/>
-  <object id="124" name="class_chair" type="chair" x="255.5" y="463.5" width="15.5" height="22"/>
-  <object id="125" name="class_chair" type="chair" x="288.5" y="432.5" width="14" height="22"/>
-  <object id="126" name="class_chair" type="chair" x="288" y="464.5" width="15" height="22"/>
-  <object id="127" name="class_table" type="table" x="240.5" y="128" width="13" height="22.5"/>
-  <object id="128" name="class_table" type="table" x="272" y="128.5" width="16" height="23.5"/>
-  <object id="129" name="class_table" type="table" x="272" y="159" width="16" height="24.5"/>
-  <object id="130" name="class_table" type="table" x="239" y="160" width="17" height="24"/>
-  <object id="131" name="class_chair" type="chair" x="223.5" y="128" width="16" height="23.5"/>
-  <object id="132" name="class_chair" type="chair" x="225.5" y="159.5" width="13.5" height="23"/>
-  <object id="133" name="class_chair" type="chair" x="257" y="128" width="14.5" height="21"/>
-  <object id="134" name="class_chair" type="chair" x="258" y="160" width="15" height="22.5"/>
   <object id="135" name="Piano" type="instrument" x="177" y="72.5" width="28" height="31.5"/>
   <object id="136" name="book_shelf" type="book_shelf" x="215" y="267" width="66" height="44.5"/>
   <object id="137" name="book_shelf" type="book_shelf" x="211" y="75" width="25.5" height="29.5"/>
-  <object id="138" name="book_shelf" type="book_shelf" x="306.5" y="74" width="25.5" height="30.5"/>
   <object id="139" name="book_shelf" type="book_shelf" x="227.5" y="396" width="24.5" height="28.5"/>
   <object id="143" name="student_bed" type="bed" x="358" y="72.5" width="37" height="14.5"/>
   <object id="144" name="student_bed" type="bed" x="356.5" y="89.5" width="38" height="16"/>
   <object id="145" name="student_bed" type="bed" x="356" y="135.5" width="39" height="17"/>
   <object id="146" name="student_bed" type="bed" x="356.5" y="155" width="37" height="14"/>
-  <object id="147" name="computer" type="computer" x="484.5" y="106" width="18.5" height="34"/>
+  <object id="147" name="computer" type="computer" x="484.5" y="106" width="18.5" height="26.5"/>
   <object id="149" name="study_table" type="table" x="451" y="90" width="26" height="18.5"/>
   <object id="151" name="dorm_table" type="table" x="420" y="134" width="24.5" height="24.5">
    <ellipse/>
@@ -92,10 +79,14 @@
   <object id="153" name="dorm_chair" type="chair" x="432" y="159.5" width="17" height="16.5"/>
   <object id="154" name="camera" type="camera" x="479" y="154" width="16.5" height="21.5"/>
   <object id="159" x="404.5" y="82" width="8.5" height="20"/>
-  <object id="201" name="teacher_table" type="table" x="305" y="113" width="15.5" height="29"/>
-  <object id="202" name="teacher_chair" type="chair" x="319" y="113.5" width="10" height="16.5"/>
   <object id="203" name="teacher_table" type="table" x="190.5" y="475" width="18" height="34.5"/>
   <object id="204" name="teacher_chair" type="chair" x="183" y="478" width="8.5" height="24"/>
+  <object id="238" x="639" y="659"/>
+  <object id="239" name="hall_computer_table" type="table" x="480" y="301" width="112" height="13"/>
+  <object id="266" name="class_chair" type="chair" x="258.25" y="439.5" width="10.5" height="11.25"/>
+  <object id="267" name="class_chair" type="chair" x="291" y="439.75" width="10" height="9.25"/>
+  <object id="268" name="class_chair" type="chair" x="257.25" y="471.75" width="11.5" height="10.25"/>
+  <object id="269" name="class_chair" type="chair" x="290.25" y="471.75" width="10" height="11"/>
  </objectgroup>
  <objectgroup id="5" name="Object Layer_Doors">
   <object id="41" name="Door" type="door" x="304.5" y="209" width="30.5" height="30.5"/>
@@ -108,26 +99,25 @@
   <object id="53" name="Door" type="door" x="559.5" y="384" width="32" height="31.5"/>
   <object id="54" name="Door" type="door" x="415.5" y="384" width="32" height="32"/>
   <object id="55" name="Door" type="door" x="319.5" y="384" width="33" height="31.5"/>
-  <object id="100" name="chair" type="chair" x="528" y="316.333" width="16" height="19"/>
-  <object id="101" name="chair" type="chair" x="560.333" y="316.333" width="15.6667" height="19"/>
+  <object id="100" name="chair" type="chair" x="528" y="316.333" width="16" height="12"/>
+  <object id="101" name="chair" type="chair" x="560.333" y="316.333" width="15.6667" height="12.75"/>
   <object id="102" name="girl_bathtub" type="bathtub" x="704" y="351.5" width="31" height="32"/>
   <object id="103" name="boy_bathtub" type="bathtub" x="704" y="239.5" width="32.5" height="33"/>
   <object id="104" name="toilet_sink" type="toilet_sink" x="705.5" y="181.5" width="31.5" height="34.5"/>
   <object id="105" name="toilet_sink" type="toilet_sink" x="703.5" y="277.5" width="33" height="35"/>
   <object id="107" name="Television" type="Television" x="448" y="278" width="14.5" height="26.5"/>
-  <object id="108" name="Sofa" type="Sofa" x="336" y="261" width="96" height="26"/>
-  <object id="109" name="Sofa" type="Sofa" x="303.5" y="277" width="24.5" height="59.5"/>
+  <object id="108" name="horizontal_sofa" type="Sofa" x="336" y="261" width="96" height="26"/>
+  <object id="109" name="vertical_sofa" type="Sofa" x="303.5" y="277" width="24.5" height="59.5"/>
   <object id="224" name="books" type="book" x="255.333" y="94.6667" width="26.6667" height="13.3333"/>
-  <object id="225" name="class_table" type="class_table" x="184.667" y="184.667" width="28" height="24"/>
  </objectgroup>
  <objectgroup id="7" name="Object Layer_Objects" class="instrument">
   <object id="92" name="computer_table" type="table" x="480.667" y="304" width="110" height="14.6667" visible="0"/>
   <object id="94" name="computer" type="computer" x="496.667" y="286.667" width="14.6667" height="17.3333"/>
   <object id="95" name="computer" type="computer" x="526.667" y="286.667" width="18" height="18"/>
   <object id="96" name="computer" type="computer" x="559.667" y="287.667" width="16" height="16"/>
-  <object id="97" name="chair" type="chair" x="496" y="316.667" width="15.3333" height="18"/>
+  <object id="97" name="chair" type="chair" x="496" y="316.667" width="15.3333" height="11.75"/>
   <object id="111" name="dorm_teacher_beds" type="beds" x="224" y="231" width="32.5" height="30.5"/>
-  <object id="155" name="computer" type="computer" x="179" y="314.5" width="27" height="38"/>
+  <object id="155" name="computer" type="computer" x="179" y="314.5" width="27" height="25.75"/>
   <object id="156" x="209" y="212.5"/>
   <object id="157" name="acoustic_guitar" type="instrument" x="175" y="262" width="16" height="32.5"/>
   <object id="160" name="washing_machine" type="washing_machine" x="628" y="193" width="21.5" height="24"/>
@@ -135,13 +125,9 @@
   <object id="165" name="living_room_table" type="table" x="381" y="304.5" width="38.5" height="37.5"/>
   <object id="166" name="bench_press_chair" type="gym_equipements" x="578" y="86" width="27.5" height="33"/>
   <object id="167" name="punching_bag" type="gym_equipement" x="640" y="86" width="16" height="34"/>
-  <object id="168" name="treadmill" type="gym_equipement" x="675.5" y="79" width="24" height="43.5"/>
-  <object id="169" name="treadmill" type="gym_equipement" x="707" y="79.5" width="25" height="42"/>
+  <object id="168" name="treadmill" type="gym_equipement" x="677.75" y="80.75" width="20.75" height="39.75"/>
+  <object id="169" name="treadmill" type="gym_equipement" x="710.25" y="81.5" width="18.25" height="38.75"/>
   <object id="174" name="kitchen_table" type="table" x="473" y="448" width="29.5" height="39.5"/>
-  <object id="175" name="kitchen_chair" type="chair" x="448.5" y="447" width="14" height="20.5"/>
-  <object id="176" name="kitchen_chair" type="chair" x="450.5" y="467.5" width="13.5" height="18.5"/>
-  <object id="177" name="kitchen_chair" type="chair" x="513" y="447.5" width="13" height="20.5"/>
-  <object id="178" name="kitchen_chair" type="chair" x="509" y="469.5" width="18" height="15"/>
   <object id="180" name="dressing_table" type="dressing_table" x="608.5" y="397.5" width="62.5" height="34"/>
   <object id="181" name="student_bed" type="bed" x="693" y="392" width="38.5" height="21"/>
   <object id="182" name="student_bed" type="bed" x="696" y="411" width="34" height="14.5"/>
@@ -150,8 +136,8 @@
   <object id="187" name="dorm_table" type="table" x="590" y="465">
    <polygon points="0,0 -15,14 2,36.5 18,18.5"/>
   </object>
-  <object id="188" name="dorm_chair" type="chair" x="560" y="452.5" width="14" height="26"/>
-  <object id="189" name="dorm_chair" type="chair" x="597" y="449" width="13" height="23.5"/>
+  <object id="188" name="dorm_chair" type="chair" x="560" y="462.25" width="14" height="13.5"/>
+  <object id="189" name="dorm_chair" type="chair" x="597" y="460.25" width="13" height="12.25"/>
   <object id="190" name="singing_microphone" type="instrument" x="668" y="483.5" width="21.5" height="28.5"/>
   <object id="191" name="mirror" type="mirror" x="181.5" y="216" width="20" height="32.5"/>
   <object id="192" name="miku_figurine" type="figurine" x="359.5" y="99.5" width="18" height="25"/>
@@ -160,27 +146,59 @@
   <object id="196" name="girl_toilet" type="toilet" x="673" y="278.5" width="14.5" height="34.5"/>
   <object id="197" name="boy_shower" type="shower" x="675" y="255.5" width="28" height="23.5"/>
   <object id="198" name="girl_shower" type="shower" x="673.5" y="368.5" width="30" height="22.5"/>
-  <object id="205" name="closets" type="closet" x="175.333" y="126.667" width="16.6667" height="48"/>
   <object id="206" name="book_shelf" type="book_shelf" x="288" y="274.667" width="14.6667" height="60.6667"/>
   <object id="207" name="sofa_chair" type="chair" x="335.333" y="306" width="16" height="12"/>
   <object id="210" name="book_stand" type="book_stand" x="232" y="299.333" width="18.6667" height="28.6667"/>
   <object id="211" name="books" type="books" x="259.333" y="314.667" width="27.3333" height="17.3333"/>
   <object id="212" name="closets" type="closet" x="174.667" y="403.333" width="30" height="27.3333"/>
-  <object id="213" name="table and chair" type="table and chair" x="337.333" y="446.667" width="14" height="56.6667"/>
   <object id="214" name="shelf" type="shelf" x="290" y="212.667" width="13.3333" height="35.3333"/>
   <object id="215" name="desk_lamp" type="lamp" x="319.333" y="250" width="16" height="30"/>
-  <object id="216" name="dashboard" type="dashboard" x="337.333" y="213.333" width="95.3333" height="25.3333"/>
+  <object id="216" name="dashboard" type="dashboard" x="354.333" y="213.333" width="78.3333" height="25.3333"/>
   <object id="217" name="tv_shelf" type="tv_shelf" x="448.667" y="305.333" width="13.3333" height="26.6667"/>
   <object id="220" name="bottles" type="bottles" x="368" y="490" width="20" height="18"/>
   <object id="221" name="books" type="book" x="264.667" y="411.333" width="40" height="12"/>
   <object id="226" name="fridge" type="kitchen_objects" x="368" y="391" width="15.6667" height="34.3333"/>
   <object id="227" name="stove" type="kitchen_objects" x="384" y="401" width="16" height="25.3333"/>
-  <object id="229" name="kitchen_sink" type="kitchen_objects" x="448.333" y="399.667" width="32" height="28"/>
+  <object id="229" name="kitchen_sink" type="kitchen_objects" x="448.333" y="405.167" width="32" height="22.5"/>
   <object id="232" name="bread_maker" type="kitchen_objects" x="480.333" y="400" width="16" height="26"/>
   <object id="233" name="coffee_machine" type="kitchen_objects" x="496.667" y="398.667" width="16.3333" height="27"/>
   <object id="235" name="microwave" type="kitchen_objects" x="514.333" y="400.333" width="30.6667" height="26"/>
   <object id="236" name="kitchen_cabinet" type="kitchen_objects" x="368" y="438" width="49.6667" height="21"/>
   <object id="237" name="kitchen_cabinet" type="kitchen_objects                       " x="368" y="472.333" width="48.3333" height="18"/>
+  <object id="241" name="class_table" type="table" x="208.25" y="113.75" width="12" height="14.75"/>
+  <object id="242" name="class_table" type="table" x="240.5" y="113.5" width="12.5" height="14.75"/>
+  <object id="244" name="class_table" type="table" x="272.5" y="113" width="11.5" height="15.75"/>
+  <object id="245" name="class_table" type="table" x="272.5" y="145.5" width="11.75" height="15"/>
+  <object id="246" name="class_table" type="table" x="240" y="145.25" width="13" height="15.75"/>
+  <object id="247" name="class_table" type="table" x="208.25" y="146" width="11.75" height="13.25"/>
+  <object id="248" name="class_table" type="table" x="208" y="177.5" width="13" height="14"/>
+  <object id="249" name="class_table" type="table" x="240.25" y="177" width="11.75" height="16"/>
+  <object id="250" name="class_table" type="table" x="272.5" y="176.75" width="11.75" height="16"/>
+  <object id="251" name="class_chair" type="chair" x="195.25" y="119.75" width="11.25" height="10"/>
+  <object id="255" name="class_chair" type="chair" x="228.5" y="120.75" width="9.75" height="9.75"/>
+  <object id="256" name="class_chair" type="chair" x="259.75" y="120.25" width="10.75" height="9.5"/>
+  <object id="257" name="class_chair" type="chair" x="196.25" y="152" width="10.75" height="10.25"/>
+  <object id="258" name="class_chair" type="chair" x="228.25" y="152.75" width="10" height="10.75"/>
+  <object id="259" name="class_chair" type="chair" x="260.5" y="151.75" width="10" height="10.75"/>
+  <object id="260" name="class_chair" type="chair" x="196.5" y="184.5" width="10" height="9.75"/>
+  <object id="261" name="class_chair" type="chair" x="228" y="183.75" width="10.5" height="10"/>
+  <object id="262" name="class_chair" type="chair" x="259.75" y="184.25" width="10" height="9.75"/>
+  <object id="263" name="blackboard" type="blackboard" x="307.5" y="80" width="25.25" height="17"/>
+  <object id="264" name="class_closet" type="closet" x="289.5" y="88" width="14.25" height="17"/>
+  <object id="265" name="teacher_desk" type="desk" x="312.5" y="121.5" width="28.75" height="14.75"/>
+  <object id="270" name="chair_for_talking_class" type="chair" x="337" y="453" width="14" height="10.75"/>
+  <object id="271" name="chair_for_talking_class" type="chair" x="338.25" y="489.25" width="12.5" height="9"/>
+  <object id="272" name="table_for_talking_class" type="table" x="336.25" y="469" width="16.5" height="12"/>
+  <object id="273" name="kitchen_chair" type="chair" x="451.75" y="455.5" width="10.5" height="11.5"/>
+  <object id="274" name="kitchen_chair" type="chair" x="452.25" y="473" width="10.5" height="10.5"/>
+  <object id="275" name="kitchen_chair" type="chair" x="513.75" y="455" width="12" height="12.25"/>
+  <object id="276" name="kitchen_chair" type="chair" x="513.5" y="472.5" width="11.75" height="10.5"/>
+  <object id="277" name="yoga_ball" type="ball" x="695.75" y="134" width="17.25" height="18.5">
+   <ellipse/>
+  </object>
+  <object id="278" name="basketball" type="ball" x="418.5" y="98.25" width="10.75" height="9.75">
+   <ellipse/>
+  </object>
  </objectgroup>
  <objectgroup id="6" name="Object Layer_Walls">
   <object id="56" name="Wall" type="wall" x="159.333" y="63.3333" width="17.3333" height="454"/>
@@ -205,5 +223,6 @@
   <object id="85" name="Wall" type="wall" x="282.667" y="240" width="4.66667" height="96.6667"/>
   <object id="86" name="Wall" type="wall" x="160" y="63.3333" width="351.333" height="32.6667"/>
   <object id="87" name="Wall" type="wall" x="560" y="64.6667" width="190" height="29.3333"/>
+  <object id="240" name="class1_window" type="window" x="244" y="70.75" width="23" height="19.5"/>
  </objectgroup>
 </map>
