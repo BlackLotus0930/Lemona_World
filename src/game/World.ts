@@ -328,9 +328,11 @@ const NON_BLOCKING_OBJECT_LABELS = new Set([
   'treadmill',
   'punching_bag',
   'bench_press_chair',
+  'class_table',
 ]);
 
 const BLOCKING_OBJECT_LABELS = new Set([
+  'teacher_table',
   'wall',
   'closet',
   'closets',
@@ -353,9 +355,7 @@ const BLOCKING_OBJECT_LABELS = new Set([
   'washing_machine',
   'mirror',
   'study_table',
-  'class_table',
   'dorm_table',
-  'teacher_table',
   'kitchen_table',
   'living_room_table',
 ]);
@@ -394,10 +394,11 @@ function resolveDefaultBlocking(params: {
   const { type, name, isWallGroup, isDoorGroup, isRoomsGroup } = params;
   if (BLOCKED_EXIT_NAMES.has(name)) return true;
   if (isDoorGroup || type === 'door' || name === 'door') return false;
-  if (isRoomsGroup) return false;
-  if (isWallGroup) return true;
+  // Explicit blocking (tv_shelf, book_shelf, etc.) takes precedence over group type.
   if (BLOCKING_OBJECT_LABELS.has(type) || BLOCKING_OBJECT_LABELS.has(name)) return true;
   if (NON_BLOCKING_OBJECT_LABELS.has(type) || NON_BLOCKING_OBJECT_LABELS.has(name)) return false;
+  if (isRoomsGroup) return false;
+  if (isWallGroup) return true;
   // For unknown object labels, stay conservative but keep them walkable
   // so NPCs can still reach custom interaction anchors.
   return false;

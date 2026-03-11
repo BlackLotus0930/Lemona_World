@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="58" height="36" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="279">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="58" height="36" tilewidth="16" tileheight="16" infinite="0" nextlayerid="9" nextobjectid="290">
  <layer id="1" name="Tile Layer 1" width="58" height="36">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -41,9 +41,9 @@
 </data>
  </layer>
  <imagelayer id="8" name="Image Layer 2">
-  <image source="map (4).png" width="928" height="576"/>
+  <image source="map (5).png" width="928" height="576"/>
  </imagelayer>
- <objectgroup id="4" name="Object Layer_Rooms">
+ <objectgroup id="4" name="Object Layer_Rooms" visible="0">
   <object id="24" name="class1" type="room" x="175.5" y="95" width="169.5" height="112.5"/>
   <object id="25" name="dorm_boy" type="room" x="352" y="95.5" width="152" height="112"/>
   <object id="26" name="dorm_teacher" type="room" x="176" y="239" width="107.5" height="144.5"/>
@@ -63,9 +63,8 @@
   <object id="119" name="class_table" type="table" x="241" y="463.5" width="15" height="24"/>
   <object id="120" name="class_table" type="table" x="273.5" y="464.5" width="15.5" height="23.5"/>
   <object id="135" name="Piano" type="instrument" x="177" y="72.5" width="28" height="31.5"/>
-  <object id="136" name="book_shelf" type="book_shelf" x="215" y="267" width="66" height="44.5"/>
+  <object id="136" name="book_shelf" type="book_shelf" x="241" y="273" width="40" height="38.5"/>
   <object id="137" name="book_shelf" type="book_shelf" x="211" y="75" width="25.5" height="29.5"/>
-  <object id="139" name="book_shelf" type="book_shelf" x="227.5" y="396" width="24.5" height="28.5"/>
   <object id="143" name="student_bed" type="bed" x="358" y="72.5" width="37" height="14.5"/>
   <object id="144" name="student_bed" type="bed" x="356.5" y="89.5" width="38" height="16"/>
   <object id="145" name="student_bed" type="bed" x="356" y="135.5" width="39" height="17"/>
@@ -150,13 +149,11 @@
   <object id="207" name="sofa_chair" type="chair" x="335.333" y="306" width="16" height="12"/>
   <object id="210" name="book_stand" type="book_stand" x="232" y="299.333" width="18.6667" height="28.6667"/>
   <object id="211" name="books" type="books" x="259.333" y="314.667" width="27.3333" height="17.3333"/>
-  <object id="212" name="closets" type="closet" x="174.667" y="403.333" width="30" height="27.3333"/>
   <object id="214" name="shelf" type="shelf" x="290" y="212.667" width="13.3333" height="35.3333"/>
   <object id="215" name="desk_lamp" type="lamp" x="319.333" y="250" width="16" height="30"/>
   <object id="216" name="dashboard" type="dashboard" x="354.333" y="213.333" width="78.3333" height="25.3333"/>
   <object id="217" name="tv_shelf" type="tv_shelf" x="448.667" y="305.333" width="13.3333" height="26.6667"/>
   <object id="220" name="bottles" type="bottles" x="368" y="490" width="20" height="18"/>
-  <object id="221" name="books" type="book" x="264.667" y="411.333" width="40" height="12"/>
   <object id="226" name="fridge" type="kitchen_objects" x="368" y="391" width="15.6667" height="34.3333"/>
   <object id="227" name="stove" type="kitchen_objects" x="384" y="401" width="16" height="25.3333"/>
   <object id="229" name="kitchen_sink" type="kitchen_objects" x="448.333" y="405.167" width="32" height="22.5"/>
@@ -186,9 +183,6 @@
   <object id="263" name="blackboard" type="blackboard" x="307.5" y="80" width="25.25" height="17"/>
   <object id="264" name="class_closet" type="closet" x="289.5" y="88" width="14.25" height="17"/>
   <object id="265" name="teacher_desk" type="desk" x="312.5" y="121.5" width="28.75" height="14.75"/>
-  <object id="270" name="chair_for_talking_class" type="chair" x="337" y="453" width="14" height="10.75"/>
-  <object id="271" name="chair_for_talking_class" type="chair" x="338.25" y="489.25" width="12.5" height="9"/>
-  <object id="272" name="table_for_talking_class" type="table" x="336.25" y="469" width="16.5" height="12"/>
   <object id="273" name="kitchen_chair" type="chair" x="451.75" y="455.5" width="10.5" height="11.5"/>
   <object id="274" name="kitchen_chair" type="chair" x="452.25" y="473" width="10.5" height="10.5"/>
   <object id="275" name="kitchen_chair" type="chair" x="513.75" y="455" width="12" height="12.25"/>
@@ -199,8 +193,18 @@
   <object id="278" name="basketball" type="ball" x="418.5" y="98.25" width="10.75" height="9.75">
    <ellipse/>
   </object>
+  <object id="279" name="library_bookshelf" type="bookshelf" x="183" y="393.5" width="65.5" height="43"/>
+  <object id="281" name="library_bookshelf" type="bookshelf" x="179.5" y="452.5" width="9.5" height="57"/>
+  <object id="282" name="library_bookshelf" type="bookshelf" x="212.5" y="452.5" width="8.5" height="57"/>
+  <object id="283" name="library_bookshelf" type="bookshelf" x="245" y="452" width="8.5" height="57"/>
+  <object id="284" name="library_table" type="table" x="304.5" y="442.5" width="14.5" height="44.5"/>
+  <object id="285" name="library_table" type="table" x="319" y="443" width="16" height="43.5"/>
+  <object id="286" name="library_chair" type="chair" x="292" y="456.375" width="9.75" height="9.375"/>
+  <object id="287" x="292" y="472.875" width="10.5" height="8.75"/>
+  <object id="288" name="library_chair" type="chair" x="338.125" y="456.5" width="10.625" height="9.125"/>
+  <object id="289" name="library_chair" type="chair" x="338.125" y="472.625" width="9.75" height="8.375"/>
  </objectgroup>
- <objectgroup id="6" name="Object Layer_Walls">
+ <objectgroup id="6" name="Object Layer_Walls" visible="0">
   <object id="56" name="Wall" type="wall" x="159.333" y="63.3333" width="17.3333" height="454"/>
   <object id="58" name="Wall" type="wall" x="736" y="65.3333" width="15.3333" height="451.333"/>
   <object id="59" name="Wall" type="wall" x="160" y="512.667" width="591.333" height="3.33333"/>

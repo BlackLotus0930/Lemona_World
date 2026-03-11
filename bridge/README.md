@@ -24,6 +24,49 @@ Local adapter service that translates OpenClaw-style execution updates into Lemo
 - `BRIDGE_MODE=simulate` (default): emits staged demo events for each published task.
 - `BRIDGE_MODE=passthrough`: only emits assignment event; intended when external OpenClaw events are pushed via webhook.
 
+## Relay Cognition Endpoint
+
+The bridge also exposes relay-style HTTP endpoints used by `RelayProvider`:
+
+- `POST /tasks/publish`
+- `POST /npc/cognition`
+- `POST /npc/dialogue`
+- `POST /npc/daily-plan`
+- `POST /npc/conversation-outcome`
+
+Launch game with:
+
+- `http://localhost:5173/?bridge=relay&bridgeUrl=http://localhost:8787`
+
+### OpenRouter Environment Variables
+
+Set these in the shell that starts the bridge service (or in a `.env` loader of your choice):
+
+- `OPENROUTER_API_KEY` (or `OPENAI_API_KEY`) **required for LLM relay endpoints**
+- `OPENROUTER_BASE_URL` (optional, default `https://openrouter.ai/api/v1`)
+- `OPENROUTER_MODEL` (optional)
+- `OPENROUTER_APP_NAME` (optional)
+- `OPENROUTER_SITE_URL` (optional)
+- `OPENROUTER_TEMPERATURE` (optional)
+- `OPENROUTER_MAX_TOKENS` (optional)
+
+Bridge now auto-loads env files on startup in this order:
+
+1. project root `.env` (`Lemona_Game/.env`)
+2. `bridge/.env` (overrides root values when present)
+
+Relay cognition is OpenRouter-required:
+
+- Missing key -> `POST /npc/cognition` returns `503` with `code: OPENROUTER_KEY_MISSING`
+- Upstream model failures/invalid payloads -> `POST /npc/cognition` returns `502` with `code: OPENROUTER_UPSTREAM_ERROR`
+- Missing key -> `POST /npc/dialogue` returns `503` with `code: OPENROUTER_KEY_MISSING`
+- Upstream model failures/invalid payloads -> `POST /npc/dialogue` returns `502` with `code: OPENROUTER_UPSTREAM_ERROR`
+- Missing key -> `POST /npc/daily-plan` returns `503` with `code: OPENROUTER_KEY_MISSING`
+- Upstream model failures/invalid payloads -> `POST /npc/daily-plan` returns `502` with `code: OPENROUTER_UPSTREAM_ERROR`
+- Missing key -> `POST /npc/conversation-outcome` returns `503` with `code: OPENROUTER_KEY_MISSING`
+- Upstream model failures/invalid payloads -> `POST /npc/conversation-outcome` returns `502` with `code: OPENROUTER_UPSTREAM_ERROR`
+- `GET /health` includes `openRouterReady` and `openRouterReason` for readiness checks
+
 ## HTTP Endpoints
 
 - `GET /health`

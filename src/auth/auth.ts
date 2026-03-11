@@ -2,6 +2,35 @@ import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 export type AuthUser = User | null;
+const SAVE_DB_NAME = 'lemona-save-db';
+
+function clearSupabaseAuthStorage(): void {
+  if (typeof window === 'undefined') return;
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (!key) continue;
+    if (key.startsWith('sb-') && key.includes('-auth-token')) {
+      keysToRemove.push(key);
+    }
+  }
+  for (const key of keysToRemove) {
+    window.localStorage.removeItem(key);
+  }
+}
+
+function clearSimulationPersistence(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof indexedDB === 'undefined') {
+      resolve();
+      return;
+    }
+    const req = indexedDB.deleteDatabase(SAVE_DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    req.onblocked = () => resolve();
+  });
+}
 
 export async function signInWithGoogle(): Promise<void> {
   if (!supabase) {
@@ -30,14 +59,15 @@ export async function signInWithGitHub(): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
-  if (!supabase) {
-    return;
+  if (supabase) {
+    // Local scope guarantees client-side logout even if network is flaky.
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) {
+      throw error;
+    }
   }
-
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    throw error;
-  }
+  clearSupabaseAuthStorage();
+  await clearSimulationPersistence();
 }
 
 export async function getSession(): Promise<Session | null> {

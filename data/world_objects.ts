@@ -2,15 +2,22 @@ export type AffordanceType =
   | 'sleep'
   | 'eat'
   | 'study'
+  | 'read'
   | 'exercise'
+  | 'sports_ball'
   | 'social'
   | 'rest'
   | 'work'
   | 'music'
+  | 'perform'
   | 'watch_tv'
   | 'toilet'
   | 'shower'
-  | 'clean';
+  | 'bathe'
+  | 'clean'
+  | 'cook'
+  | 'laundry'
+  | 'decorate';
 
 export type FacingDirection = 'down' | 'left' | 'right' | 'up';
 export type InteractionPose = 'stand' | 'sit' | 'lie';
@@ -39,9 +46,9 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Dorm Boy Beds',
     affordances: ['sleep', 'rest'],
     interactionPoints: [
-      { id: 'dorm1_bed_1', tileX: 22, tileY: 5, facing: 'right', pose: 'lie' },
+      { id: 'dorm1_bed_1', tileX: 23, tileY: 5, facing: 'right', pose: 'lie' },
       { id: 'dorm1_bed_2', tileX: 23, tileY: 6, facing: 'right', pose: 'lie' },
-      { id: 'dorm1_bed_3', tileX: 22, tileY: 8, facing: 'right', pose: 'lie' },
+      { id: 'dorm1_bed_3', tileX: 23, tileY: 8, facing: 'right', pose: 'lie' },
       { id: 'dorm1_bed_4', tileX: 23, tileY: 9, facing: 'right', pose: 'lie' },
     ],
   },
@@ -51,8 +58,9 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Dorm Boy Computer',
     affordances: ['study', 'work'],
     interactionPoints: [
+      // Aligned with dorm_table/dorm_chair objects in updated map.
       { id: 'dorm1_pc_chair_1', tileX: 28, tileY: 9, facing: 'up', pose: 'sit' },
-      { id: 'dorm1_pc_chair_2', tileX: 29, tileY: 10, facing: 'up', pose: 'sit' },
+      { id: 'dorm1_pc_chair_2', tileX: 27, tileY: 10, facing: 'up', pose: 'sit' },
     ],
   },
   {
@@ -73,9 +81,10 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Dorm Girl Vanity and Desk',
     affordances: ['study', 'rest', 'social'],
     interactionPoints: [
-      { id: 'dorm2_desk_1', tileX: 37, tileY: 30, facing: 'up', pose: 'sit' },
-      { id: 'dorm2_desk_2', tileX: 40, tileY: 29, facing: 'up', pose: 'sit' },
-      { id: 'dorm2_desk_3', tileX: 41, tileY: 29, facing: 'down', pose: 'sit' },
+      // Aligned with updated dorm_table/dorm_chair objects near dorm girl room.
+      { id: 'dorm2_desk_1', tileX: 35, tileY: 28, facing: 'up', pose: 'sit' },
+      { id: 'dorm2_desk_2', tileX: 37, tileY: 28, facing: 'up', pose: 'sit' },
+      { id: 'dorm2_desk_3', tileX: 37, tileY: 29, facing: 'down', pose: 'sit' },
     ],
   },
   {
@@ -101,23 +110,47 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     id: 'class1_music_corner',
     roomId: 'class1',
     name: 'Class 1 Piano and Music',
-    affordances: ['music', 'study'],
+    affordances: ['music', 'study', 'perform'],
     interactionPoints: [
       { id: 'class1_music_1', tileX: 8, tileY: 5, facing: 'up', pose: 'stand' },
     ],
   },
   {
-    id: 'class2_desks',
-    roomId: 'class2',
-    name: 'Class 2 Desks',
-    affordances: ['study', 'work'],
+    id: 'hall3_music_nook',
+    roomId: 'teacher_dorm',
+    name: 'Dorm Teacher Guitar and Mic',
+    affordances: ['music', 'perform', 'social'],
     interactionPoints: [
-      { id: 'class2_seat_a', tileX: 16, tileY: 28, facing: 'left', pose: 'sit' },
-      { id: 'class2_seat_b', tileX: 18, tileY: 28, facing: 'left', pose: 'sit' },
-      { id: 'class2_seat_c', tileX: 16, tileY: 30, facing: 'left', pose: 'sit' },
-      { id: 'class2_seat_d', tileX: 18, tileY: 30, facing: 'left', pose: 'sit' },
+      // acoustic_guitar (157) near dorm-teacher room.
+      { id: 'hall3_guitar_1', tileX: 11, tileY: 16, facing: 'left', pose: 'stand' },
     ],
-    queuePoints: [{ id: 'class2_queue_1', tileX: 12, tileY: 28 }],
+  },
+  {
+    id: 'library_tables',
+    roomId: 'library',
+    name: 'Library Tables and Chairs',
+    affordances: ['study', 'work', 'rest', 'read'],
+    interactionPoints: [
+      // Updated from former class2 table/chair placements in the library zone.
+      { id: 'library_seat_a', tileX: 16, tileY: 27, facing: 'right', pose: 'sit' },
+      { id: 'library_seat_b', tileX: 16, tileY: 29, facing: 'right', pose: 'sit' },
+      { id: 'library_seat_c', tileX: 18, tileY: 27, facing: 'left', pose: 'sit' },
+      { id: 'library_seat_d', tileX: 18, tileY: 29, facing: 'left', pose: 'sit' },
+    ],
+    queuePoints: [{ id: 'library_queue_1', tileX: 14, tileY: 28 }],
+  },
+  {
+    id: 'library_bookshelves',
+    roomId: 'library',
+    name: 'Library Bookshelves',
+    affordances: ['read', 'study', 'rest'],
+    interactionPoints: [
+      // library_bookshelf objects (279, 281, 282, 283).
+      { id: 'library_shelf_1', tileX: 12, tileY: 28, facing: 'up', pose: 'stand' },
+      { id: 'library_shelf_2', tileX: 10, tileY: 29, facing: 'right', pose: 'stand' },
+      { id: 'library_shelf_3', tileX: 12, tileY: 29, facing: 'right', pose: 'stand' },
+      { id: 'library_shelf_4', tileX: 14, tileY: 29, facing: 'right', pose: 'stand' },
+    ],
   },
   {
     id: 'canteen_tables',
@@ -125,24 +158,24 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     name: 'Kitchen Table and Chairs',
     affordances: ['eat', 'social', 'rest'],
     interactionPoints: [
-      { id: 'canteen_seat_a', tileX: 29, tileY: 30, facing: 'right', pose: 'sit' },
-      { id: 'canteen_seat_b', tileX: 29, tileY: 31, facing: 'right', pose: 'sit' },
+      // kitchen_chair objects (273-276) around kitchen_table (174).
+      { id: 'canteen_seat_a', tileX: 28, tileY: 29, facing: 'right', pose: 'sit' },
+      { id: 'canteen_seat_b', tileX: 28, tileY: 30, facing: 'right', pose: 'sit' },
       { id: 'canteen_seat_c', tileX: 32, tileY: 29, facing: 'left', pose: 'sit' },
       { id: 'canteen_seat_d', tileX: 32, tileY: 30, facing: 'left', pose: 'sit' },
     ],
     queuePoints: [
-      { id: 'canteen_queue_1', tileX: 27, tileY: 28 },
-      { id: 'canteen_queue_2', tileX: 30, tileY: 28 },
+      { id: 'canteen_queue_1', tileX: 29, tileY: 28 },
+      { id: 'canteen_queue_2', tileX: 31, tileY: 28 },
     ],
   },
   {
     id: 'canteen_kitchen_appliances',
     roomId: 'canteen',
     name: 'Kitchen Appliances',
-    affordances: ['clean', 'eat'],
+    affordances: ['clean', 'eat', 'cook'],
     interactionPoints: [
-      { id: 'kitchen_fridge_1', tileX: 25, tileY: 27, facing: 'up', pose: 'stand' },
-      { id: 'kitchen_stove_1', tileX: 26, tileY: 27, facing: 'up', pose: 'stand' },
+      // fridge/stove/sink/bread/coffee/microwave objects (226,227,229,232,233,235).
       { id: 'kitchen_sink_1', tileX: 28, tileY: 27, facing: 'up', pose: 'stand' },
       { id: 'kitchen_sink_2', tileX: 29, tileY: 27, facing: 'up', pose: 'stand' },
       { id: 'kitchen_bread_1', tileX: 30, tileY: 27, facing: 'up', pose: 'stand' },
@@ -151,40 +184,26 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     ],
   },
   {
-    id: 'hall_tv',
-    roomId: 'hall1',
-    name: 'Living Room TV',
-    affordances: ['watch_tv', 'social', 'rest'],
-    interactionPoints: [
-      { id: 'hall_tv_1', tileX: 21, tileY: 17, facing: 'right', pose: 'stand' },
-      { id: 'hall_tv_2', tileX: 24, tileY: 18, facing: 'right', pose: 'stand' },
-      { id: 'hall_tv_3', tileX: 26, tileY: 19, facing: 'right', pose: 'stand' },
-    ],
-  },
-  {
     id: 'hall_sofas',
     roomId: 'hall1',
     name: 'Living Room Sofas',
     affordances: ['social', 'rest', 'watch_tv'],
     interactionPoints: [
-      // Sofa 108: horizontal (336,261 96x26) - main sofa, tiles (21-27, 16-17), facing right toward TV
-      { id: 'hall_sofa_1', tileX: 21, tileY: 17, facing: 'right', pose: 'sit' },
-      { id: 'hall_sofa_2', tileX: 23, tileY: 17, facing: 'right', pose: 'sit' },
-      { id: 'hall_sofa_3', tileX: 25, tileY: 17, facing: 'right', pose: 'sit' },
-      { id: 'hall_sofa_4', tileX: 26, tileY: 17, facing: 'right', pose: 'sit' },
-      // Sofa 109: vertical (303.5,277 24.5x59.5) - L-corner, tiles (18-20, 17-21), facing right
-      { id: 'hall_sofa_5', tileX: 20, tileY: 18, facing: 'right', pose: 'sit' },
-      { id: 'hall_sofa_6', tileX: 20, tileY: 20, facing: 'right', pose: 'sit' },
-      // sofa_chair 207: (335,306 16x12) - small chair, tile (21,19), facing up
-      { id: 'hall_sofa_7', tileX: 21, tileY: 19, facing: 'up', pose: 'sit' },
+      // horizontal_sofa (108) + vertical_sofa (109) + sofa_chair (207).
+      { id: 'hall_sofa_1', tileX: 22, tileY: 17, facing: 'down', pose: 'sit' },
+      { id: 'hall_sofa_2', tileX: 24, tileY: 17, facing: 'down', pose: 'sit' },
+      { id: 'hall_sofa_3', tileX: 26, tileY: 17, facing: 'down', pose: 'sit' },
+      { id: 'hall_sofa_4', tileX: 22, tileY: 18, facing: 'right', pose: 'sit' },
+      { id: 'hall_sofa_5', tileX: 22, tileY: 20, facing: 'right', pose: 'sit' },
     ],
   },
   {
     id: 'hall_computer_corner',
     roomId: 'hall1',
-    name: 'Hall Computer Desk',
+    name: 'Hall Computer Table',
     affordances: ['study', 'work'],
     interactionPoints: [
+      // chair objects (97,100,101) for hall_computer_table (239).
       { id: 'hall_pc_1', tileX: 31, tileY: 19, facing: 'up', pose: 'sit' },
       { id: 'hall_pc_2', tileX: 33, tileY: 19, facing: 'up', pose: 'sit' },
       { id: 'hall_pc_3', tileX: 35, tileY: 19, facing: 'up', pose: 'sit' },
@@ -192,6 +211,73 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     queuePoints: [
       { id: 'hall_pc_queue_1', tileX: 30, tileY: 19 },
       { id: 'hall_pc_queue_2', tileX: 29, tileY: 19 },
+    ],
+  },
+  {
+    id: 'hall_living_table_and_books',
+    roomId: 'hall1',
+    name: 'Living Room Table, Books, and Shelves',
+    affordances: ['read', 'social', 'rest', 'study', 'decorate'],
+    interactionPoints: [
+      // living_room_table (165), books/bookshelf/book_stand/shelf/desk_lamp/dashboard (211/206/210/214/215/216).
+      { id: 'hall_living_read_1', tileX: 22, tileY: 20, facing: 'up', pose: 'sit' },
+      { id: 'hall_living_read_2', tileX: 15, tileY: 18, facing: 'right', pose: 'stand' },
+      { id: 'hall_living_read_3', tileX: 14, tileY: 20, facing: 'right', pose: 'stand' },
+    ],
+  },
+  {
+    id: 'hall_media_corner',
+    roomId: 'hall1',
+    name: 'Hall TV Shelf and Camera Spot',
+    affordances: ['watch_tv', 'decorate', 'work'],
+    interactionPoints: [
+      // tv_shelf (217) and camera object (154) in living room corridor edge.
+      { id: 'hall_media_1', tileX: 24, tileY: 19, facing: 'right', pose: 'stand' },
+      { id: 'hall_media_2', tileX: 25, tileY: 19, facing: 'right', pose: 'stand' },
+    ],
+  },
+  {
+    id: 'hall3_teacher_bed',
+    roomId: 'teacher_dorm',
+    name: 'Dorm Teacher Bed',
+    affordances: ['sleep', 'rest'],
+    interactionPoints: [
+      // dorm_teacher_beds (111).
+      { id: 'hall3_bed_1', tileX: 16, tileY: 14, facing: 'down', pose: 'lie' },
+      { id: 'hall3_bed_2', tileX: 17, tileY: 15, facing: 'down', pose: 'lie' },
+    ],
+  },
+  {
+    id: 'hall3_teacher_desk_and_pc',
+    roomId: 'teacher_dorm',
+    name: 'Dorm Teacher Desk and Computer',
+    affordances: ['work', 'study', 'decorate'],
+    interactionPoints: [
+      // teacher_table/chair/computer (203/204/155), mirror (191), yellow_figurine (193).
+      { id: 'hall3_desk_1', tileX: 11, tileY: 19, facing: 'up', pose: 'sit' },
+      { id: 'hall3_pc_1', tileX: 12, tileY: 19, facing: 'up', pose: 'sit' },
+      { id: 'hall3_decor_1', tileX: 11, tileY: 22, facing: 'right', pose: 'stand' },
+    ],
+  },
+  {
+    id: 'class1_teacher_front',
+    roomId: 'class1',
+    name: 'Class 1 Blackboard and Teacher Desk',
+    affordances: ['study', 'work', 'social'],
+    interactionPoints: [
+      // blackboard/class_closet/teacher_desk (263/264/265) at class front.
+      { id: 'class1_front_1', tileX: 20, tileY: 9, facing: 'left', pose: 'stand' },
+    ],
+  },
+  {
+    id: 'dorm1_decor_and_ball',
+    roomId: 'dorm1',
+    name: 'Dorm Boy Decor and Ball',
+    affordances: ['decorate', 'sports_ball', 'social', 'rest'],
+    interactionPoints: [
+      // miku_figurine (192) + basketball (278) near dorm1/class1 boundary.
+      { id: 'dorm1_decor_1', tileX: 22, tileY: 6, facing: 'right', pose: 'stand' },
+      { id: 'dorm1_ball_1', tileX: 26, tileY: 6, facing: 'right', pose: 'stand' },
     ],
   },
   {
@@ -221,42 +307,77 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     id: 'gym_bench_area',
     roomId: 'gym',
     name: 'Gym Bench Area',
-    affordances: ['exercise', 'rest'],
+    affordances: ['exercise', 'rest', 'sports_ball'],
     interactionPoints: [
-      { id: 'gym_bench_1', tileX: 36, tileY: 6, facing: 'down', pose: 'sit' },
+      { id: 'gym_bench_1', tileX: 37, tileY: 6, facing: 'down', pose: 'sit' },
+    ],
+  },
+  {
+    id: 'gym_ball_zone',
+    roomId: 'gym',
+    name: 'Gym Ball Corner',
+    affordances: ['sports_ball', 'exercise', 'social'],
+    interactionPoints: [
+      // yoga_ball (277) and nearby open gym lane for ball drills.
+      { id: 'gym_ball_1', tileX: 43, tileY: 8, facing: 'right', pose: 'stand' },
     ],
   },
   {
     id: 'bathroom1_fixtures',
     roomId: 'bathroom1',
     name: 'Bathroom A Fixtures',
-    affordances: ['toilet', 'shower', 'rest'],
+    affordances: ['toilet', 'shower', 'bathe', 'laundry', 'rest'],
     interactionPoints: [
       { id: 'bath1_toilet_1', tileX: 41, tileY: 14, facing: 'down', pose: 'sit' },
-      { id: 'bath1_shower_1', tileX: 42, tileY: 17, facing: 'up', pose: 'stand' },
+      { id: 'bath1_shower_1', tileX: 43, tileY: 17, facing: 'up', pose: 'stand' },
       { id: 'bath1_sink_1', tileX: 40, tileY: 14, facing: 'up', pose: 'stand' },
+      { id: 'bath1_laundry_1', tileX: 41, tileY: 14, facing: 'up', pose: 'stand' },
     ],
   },
   {
     id: 'bathroom2_fixtures',
     roomId: 'bathroom2',
     name: 'Bathroom B Fixtures',
-    affordances: ['rest', 'toilet', 'shower'],
+    affordances: ['rest', 'toilet', 'shower', 'bathe', 'laundry'],
     interactionPoints: [
       { id: 'bath2_toilet_1', tileX: 42, tileY: 19, facing: 'down', pose: 'sit' },
       { id: 'bath2_shower_1', tileX: 43, tileY: 23, facing: 'up', pose: 'stand' },
       { id: 'bath2_sink_1', tileX: 41, tileY: 19, facing: 'up', pose: 'stand' },
+      { id: 'bath2_laundry_1', tileX: 39, tileY: 17, facing: 'up', pose: 'stand' },
+    ],
+  },
+  {
+    id: 'dorm2_style_corner',
+    roomId: 'dorm2',
+    name: 'Dorm Girl Dressing and Decor',
+    affordances: ['decorate', 'social', 'rest'],
+    interactionPoints: [
+      // dressing_table (180) + mirror (191) + figurines (192, 193).
+      { id: 'dorm2_style_1', tileX: 41, tileY: 27, facing: 'up', pose: 'stand' },
+      { id: 'dorm2_style_2', tileX: 39, tileY: 27, facing: 'up', pose: 'stand' },
     ],
   },
   {
     id: 'kitchen_cleaning_zone',
     roomId: 'canteen',
     name: 'Kitchen Sink and Prep',
-    affordances: ['clean', 'eat'],
+    affordances: ['clean', 'eat', 'cook'],
     interactionPoints: [
-      { id: 'kitchen_clean_1', tileX: 28, tileY: 26, facing: 'up', pose: 'stand' },
-      { id: 'kitchen_clean_2', tileX: 29, tileY: 26, facing: 'up', pose: 'stand' },
-      { id: 'kitchen_clean_3', tileX: 24, tileY: 26, facing: 'up', pose: 'stand' },
+      { id: 'kitchen_clean_1', tileX: 29, tileY: 27, facing: 'up', pose: 'stand' },
+      { id: 'kitchen_clean_2', tileX: 20, tileY: 27, facing: 'up', pose: 'stand' },
+      { id: 'kitchen_clean_3', tileX: 31, tileY: 27, facing: 'up', pose: 'stand' },
+    ],
+  },
+  {
+    id: 'kitchen_storage_zone',
+    roomId: 'canteen',
+    name: 'Kitchen Cabinets and Bottles',
+    affordances: ['clean', 'cook', 'decorate', 'social'],
+    interactionPoints: [
+      // kitchen_cabinet (236,237) + bottles (220).
+      { id: 'kitchen_storage_1', tileX: 27, tileY: 28, facing: 'up', pose: 'stand' },
+      { id: 'kitchen_storage_2', tileX: 27, tileY: 30, facing: 'up', pose: 'stand' },
+      { id: 'kitchen_storage_3', tileX: 28, tileY: 30, facing: 'up', pose: 'stand' },
     ],
   },
 ];

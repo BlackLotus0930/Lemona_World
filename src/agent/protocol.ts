@@ -1,26 +1,15 @@
 import type {
+  AgentCognitionPayload,
   AgentDialoguePayload,
   AgentId,
   AgentMemoryEntry,
-  AgentPlan,
-  AgentRelationshipSnapshot,
-  AgentTask,
   TaskId,
 } from './types';
 
 export type AgentProtocolEventType =
-  | 'TASK_CREATED'
-  | 'TASK_ASSIGNED'
-  | 'AGENT_THINKING'
-  | 'AGENT_TOOL_CALL'
-  | 'AGENT_RESULT'
-  | 'TASK_DONE'
-  | 'TASK_FAILED'
   | 'AGENT_MEMORY'
-  | 'AGENT_PLAN'
-  | 'AGENT_REFLECTION'
+  | 'AGENT_COGNITION'
   | 'AGENT_CONVERSATION_START'
-  | 'AGENT_DIALOGUE'
   | 'AGENT_CONVERSATION_END';
 
 export interface AgentProtocolEvent {
@@ -30,13 +19,9 @@ export interface AgentProtocolEvent {
   taskId: TaskId;
   agentId?: AgentId;
   summary?: string;
-  task?: AgentTask;
-  error?: string;
   memory?: AgentMemoryEntry;
-  plan?: AgentPlan;
+  cognition?: AgentCognitionPayload;
   dialogue?: AgentDialoguePayload;
-  relationship?: AgentRelationshipSnapshot;
-  metadata?: Record<string, unknown>;
 }
 
 export type EventListener = (event: AgentProtocolEvent) => void;

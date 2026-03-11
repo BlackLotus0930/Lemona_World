@@ -204,6 +204,7 @@ function renderSignedIn(
       setError(null);
       (signOutBtn as HTMLButtonElement).disabled = true;
       await signOut();
+      window.location.reload();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sign out failed.';
       setError(message);

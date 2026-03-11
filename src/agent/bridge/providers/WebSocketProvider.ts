@@ -1,5 +1,13 @@
 import type { AgentBridgeClient, BridgeEventListener } from '../AgentBridgeClient';
-import type { AgentTask } from '../../types';
+import type {
+  AgentCognitionContext,
+  AgentCognitionPayload,
+  AgentConversationOutcomeContext,
+  AgentConversationOutcomePayload,
+  AgentDailyPlanContext,
+  AgentDailyPlanPayload,
+  AgentTask,
+} from '../../types';
 import type { AgentProtocolEvent } from '../../protocol';
 
 interface WebSocketProviderOptions {
@@ -49,6 +57,21 @@ export class WebSocketProvider implements AgentBridgeClient {
       type: 'PUBLISH_TASK',
       task,
     }));
+  }
+
+  async requestCognition(_context: AgentCognitionContext): Promise<AgentCognitionPayload | null> {
+    // Current websocket bridge path is task-oriented; cognition requests use RelayProvider in MVP.
+    return null;
+  }
+
+  async requestDailyPlan(_context: AgentDailyPlanContext): Promise<AgentDailyPlanPayload | null> {
+    return null;
+  }
+
+  async requestConversationOutcome(
+    _context: AgentConversationOutcomeContext,
+  ): Promise<AgentConversationOutcomePayload | null> {
+    return null;
   }
 
   private handleMessage(rawData: unknown): void {

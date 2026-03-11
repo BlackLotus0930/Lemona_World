@@ -25,14 +25,14 @@ export const ROOMS: Room[] = [
   { id: 'dorm2', type: 'dorm', bounds: [35, 26, 11, 6], label: 'Dorm Girl' },
   { id: 'canteen', type: 'canteen', bounds: [23, 26, 12, 6], label: 'Kitchen' },
   { id: 'class1', type: 'classroom', bounds: [11, 6, 11, 7], label: 'Class 1' },
-  { id: 'class2', type: 'classroom', bounds: [11, 26, 12, 6], label: 'Class 2' },
+  { id: 'library', type: 'classroom', bounds: [11, 26, 12, 6], label: 'Library' },
   { id: 'gym', type: 'gym', bounds: [35, 6, 11, 7], label: 'Gym' },
   { id: 'bathroom1', type: 'bathroom', bounds: [39, 13, 7, 4], label: 'Toilet 1' },
   { id: 'bathroom2', type: 'bathroom', bounds: [39, 19, 7, 5], label: 'Toilet 2' },
   // Indoor connector areas seen in TMX living_room / dorm_teacher objects
   { id: 'hall1', type: 'hallway', bounds: [18, 15, 21, 9], label: 'Living Room' },
   { id: 'hall2', type: 'hallway', bounds: [32, 6, 3, 9], label: 'Connector' },
-  { id: 'hall3', type: 'hallway', bounds: [11, 15, 7, 9], label: 'Dorm Teacher' },
+  { id: 'teacher_dorm', type: 'dorm', bounds: [11, 15, 7, 9], label: 'Teacher Dorm' },
   { id: 'hall4', type: 'hallway', bounds: [1, 1, 57, 35], label: 'Courtyard' },
 ];
 

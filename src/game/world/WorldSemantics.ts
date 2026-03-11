@@ -24,34 +24,53 @@ const ACTIVITY_TO_AFFORDANCE: Record<ScheduleWaypoint['activity'], AffordanceTyp
   sleep: 'sleep',
   eat: 'eat',
   study: 'study',
+  class_study: 'study',
+  library_study: 'study',
+  read: 'read',
   exercise: 'exercise',
+  sports_ball: 'sports_ball',
   social: 'social',
   rest: 'rest',
   music: 'music',
+  perform: 'perform',
   watch_tv: 'watch_tv',
   toilet: 'toilet',
   shower: 'shower',
+  bathe: 'bathe',
   clean: 'clean',
+  cook: 'cook',
+  laundry: 'laundry',
+  decorate: 'decorate',
 };
 
 const ACTIVITY_OBJECT_PREFERENCES: Partial<Record<ScheduleWaypoint['activity'], string[]>> = {
   sleep: ['bed'],
   eat: ['table', 'chair'],
-  study: ['desk', 'computer', 'class', 'study_table', 'table'],
-  exercise: ['treadmill', 'punching', 'bench'],
+  study: ['desk', 'computer', 'class', 'study_table', 'table', 'blackboard', 'bookshelf'],
+  class_study: ['class', 'blackboard', 'teacher', 'desk', 'study_table', 'table'],
+  library_study: ['library', 'bookshelf', 'book_stand', 'table'],
+  read: ['bookshelf', 'book', 'library', 'book_stand', 'table'],
+  exercise: ['treadmill', 'punching', 'bench', 'gym'],
+  sports_ball: ['basketball', 'yoga_ball', 'ball', 'gym_ball', 'bench'],
   social: ['sofa', 'chair', 'table'],
   rest: ['sofa', 'bed', 'bench', 'chair'],
   music: ['music', 'piano', 'instrument', 'microphone'],
+  perform: ['microphone', 'guitar', 'piano', 'instrument', 'music'],
   watch_tv: ['tv', 'television', 'sofa'],
   toilet: ['toilet'],
-  shower: ['shower', 'bath'],
-  clean: ['sink', 'kitchen', 'stove', 'fridge', 'kitchen_appliance'],
+  shower: ['shower'],
+  bathe: ['bathtub', 'bath'],
+  clean: ['sink', 'kitchen', 'stove', 'fridge', 'kitchen_appliance', 'cabinet'],
+  cook: ['stove', 'microwave', 'bread', 'coffee', 'kitchen'],
+  laundry: ['washing_machine', 'sink', 'bathroom'],
+  decorate: ['dressing_table', 'mirror', 'figurine', 'lamp', 'dashboard', 'camera', 'bottles'],
 };
 
 const ROOM_ACTIVITY_OVERRIDES: Record<string, Partial<Record<ScheduleWaypoint['activity'], string[]>>> = {
   canteen: {
     eat: ['table', 'chair'],
     clean: ['sink', 'stove', 'fridge', 'kitchen'],
+    cook: ['stove', 'microwave', 'coffee', 'bread', 'kitchen'],
   },
   hall1: {
     rest: ['sofa'],
@@ -60,14 +79,36 @@ const ROOM_ACTIVITY_OVERRIDES: Record<string, Partial<Record<ScheduleWaypoint['a
   },
   gym: {
     exercise: ['treadmill', 'punching', 'bench'],
+    sports_ball: ['ball', 'yoga_ball', 'basketball'],
+  },
+  library: {
+    library_study: ['library', 'bookshelf', 'book'],
+    read: ['bookshelf', 'book', 'library'],
+  },
+  class1: {
+    class_study: ['class', 'blackboard', 'teacher', 'desk'],
+  },
+  bathroom1: {
+    laundry: ['washing_machine', 'sink'],
+    bathe: ['bathtub', 'shower'],
+  },
+  bathroom2: {
+    laundry: ['washing_machine', 'sink'],
+    bathe: ['bathtub', 'shower'],
+  },
+  dorm2: {
+    decorate: ['dressing_table', 'mirror', 'figurine'],
   },
 };
 
 const QUEUE_FALLBACK_ACTIVITIES = new Set<ScheduleWaypoint['activity']>([
   'eat',
+  'cook',
   'clean',
+  'laundry',
   'toilet',
   'shower',
+  'bathe',
 ]);
 
 /** Only these activities allow "next to" furniture when the exact spot is taken. Others require the exact interaction point. */
@@ -75,7 +116,22 @@ const ADJACENT_FALLBACK_ACTIVITIES = new Set<ScheduleWaypoint['activity']>([
   'rest',
   'social',
   'watch_tv',
+  'read',
+  'decorate',
 ]);
+
+const CLASS1_STUDENT_SEAT_BY_AGENT: Record<string, string> = {
+  npc1: 'class1_seat_a',
+  npc2: 'class1_seat_b',
+  npc3: 'class1_seat_i',
+  npc4: 'class1_seat_d',
+  npc5: 'class1_seat_e',
+  npc6: 'class1_seat_f',
+  npc7: 'class1_seat_c',
+};
+const CLASS1_TEACHER_FRONT_BY_AGENT: Record<string, string> = {
+  npc8: 'class1_front_1',
+};
 
 export class WorldSemantics {
   private reservationManager: ReservationManager;
@@ -144,8 +200,14 @@ export class WorldSemantics {
     agentId: string,
     currentTile: TilePoint,
   ): ResolvedTarget | null {
+    const fixedSeat = this.resolveFixedClassSeat(waypoint, objects, agentId);
+    if (fixedSeat) {
+      return fixedSeat;
+    }
+
+    const narrowedObjects = this.filterObjectsForRole(waypoint, objects, agentId);
     const candidates: Array<{ object: WorldObjectDefinition; point: InteractionPoint; isQueue: boolean }> = [];
-    for (const object of objects) {
+    for (const object of narrowedObjects) {
       object.interactionPoints.forEach((point) => candidates.push({ object, point, isQueue: false }));
       object.queuePoints?.forEach((point) => candidates.push({ object, point, isQueue: true }));
     }
@@ -223,6 +285,60 @@ export class WorldSemantics {
       }
     }
 
+    return null;
+  }
+
+  private filterObjectsForRole(
+    waypoint: ScheduleWaypoint,
+    objects: typeof WORLD_OBJECTS,
+    agentId: string,
+  ): typeof WORLD_OBJECTS {
+    if (waypoint.roomId === 'class1' && waypoint.activity !== 'class_study') {
+      const nonSeat = objects.filter((object) =>
+        !object.id.startsWith('class1_seat_') && object.id !== 'class1_teacher_front');
+      if (nonSeat.length > 0) return nonSeat;
+    }
+    if (waypoint.activity !== 'class_study' || waypoint.roomId !== 'class1') {
+      return objects;
+    }
+    if (agentId === 'npc8') {
+      const teacherFront = objects.filter((object) => object.id === 'class1_teacher_front');
+      return teacherFront.length > 0 ? teacherFront : objects;
+    }
+    const studentOnly = objects.filter((object) => object.id !== 'class1_teacher_front');
+    return studentOnly.length > 0 ? studentOnly : objects;
+  }
+
+  private resolveFixedClassSeat(
+    waypoint: ScheduleWaypoint,
+    objects: typeof WORLD_OBJECTS,
+    agentId: string,
+  ): ResolvedTarget | null {
+    if (waypoint.activity !== 'class_study' || waypoint.roomId !== 'class1') {
+      return null;
+    }
+    const studentSeatId = CLASS1_STUDENT_SEAT_BY_AGENT[agentId];
+    const teacherFrontId = CLASS1_TEACHER_FRONT_BY_AGENT[agentId];
+    const wantedPointId = teacherFrontId ?? studentSeatId;
+    if (!wantedPointId) return null;
+
+    for (const object of objects) {
+      for (const point of object.interactionPoints) {
+        if (point.id !== wantedPointId) continue;
+        // Class seat points can become temporarily non-walkable depending on map collision data.
+        // Reserve a nearby walkable tile first to keep class movement robust.
+        const near = this.findAndReserveNearTile(point.tileX, point.tileY, agentId);
+        if (near) {
+          this.rememberObjectForActivity(agentId, waypoint.activity, object.id);
+          return {
+            ...near,
+            facing: point.facing,
+            pose: point.pose ?? near.pose,
+          };
+        }
+        return null;
+      }
+    }
     return null;
   }
 
