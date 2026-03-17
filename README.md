@@ -1,4 +1,4 @@
-# Lemona
+# Lemona World
 
 Playable multi-agent world interface: publish tasks, watch NPCs pick them up, work through agent states, and return results.
 
