@@ -5,7 +5,7 @@
 <h1 align="center">Lemona World</h1>
 
 <p align="center">
-  Multi-agent game world interface: publish tasks, watch NPCs pick them up, work through agent states, and return results.
+  A multi-agent game world interface with OpenClaw integration.
 </p>
 
 <p align="center">
