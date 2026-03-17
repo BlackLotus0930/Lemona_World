@@ -1,10 +1,10 @@
 # Lemona World
 
-Playable multi-agent world interface: publish tasks, watch NPCs pick them up, work through agent states, and return results.
+Multi-agent game world interface: publish tasks, watch NPCs pick them up, work through agent states, and return results.
 
 ## What Makes It Different
 
-Lemona is not only a simulation and not only an agent CLI. It is a game-like UI for agent workflows:
+Lemona is not only a simulation but also an agent CLI. It is a game-like UI for agent workflows:
 
 - User posts a task from an in-world mission board.
 - NPCs switch from daily life to work mode.
