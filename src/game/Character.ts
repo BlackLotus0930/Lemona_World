@@ -188,6 +188,7 @@ export class Character extends Container {
   ) => ResolvedTarget;
   private releaseReservedPoint?: (pointKey: string | undefined, agentId: string) => void;
   private activeWaypointTarget?: ResolvedTarget & { waypointIndex: number };
+  private lastResolvedWaypoint?: ScheduleWaypoint;
   private lastPosForStuck = { x: 0, y: 0 };
   private stuckMinutes = 0;
   private replanCount = 0;
@@ -1146,10 +1147,7 @@ export class Character extends Container {
   }
 
   private resolveWaypointTarget(waypoint: ScheduleWaypoint): ResolvedTarget {
-    if (
-      this.activeWaypointTarget &&
-      this.activeWaypointTarget.waypointIndex === this.currentWaypointIndex
-    ) {
+    if (this.activeWaypointTarget && this.lastResolvedWaypoint === waypoint) {
       return this.activeWaypointTarget;
     }
 
@@ -1162,6 +1160,7 @@ export class Character extends Container {
       ...adjusted,
       waypointIndex: this.currentWaypointIndex,
     };
+    this.lastResolvedWaypoint = waypoint;
     this.pathFollower.clear();
     this.pathDestination = null;
     this.replanCount = 0;
@@ -1172,6 +1171,7 @@ export class Character extends Container {
     if (!this.activeWaypointTarget) return;
     this.releaseReservedPoint?.(this.activeWaypointTarget.pointKey, this.id);
     this.activeWaypointTarget = undefined;
+    this.lastResolvedWaypoint = undefined;
   }
 
   private chooseNextWaypointIndex(): number {
@@ -1289,11 +1289,13 @@ export class Character extends Container {
       this.replanCount = 0;
     }
     if (nextIndex !== this.currentWaypointIndex) {
-      this.releaseCurrentWaypointTarget();
+      if (!this.autonomousWaypoint) {
+        this.releaseCurrentWaypointTarget();
+        this.pathFollower.clear();
+        this.pathDestination = null;
+        this.replanCount = 0;
+      }
       this.currentWaypointIndex = nextIndex;
-      this.pathFollower.clear();
-      this.pathDestination = null;
-      this.replanCount = 0;
     }
     this.waypointProgressMinutes = progress;
   }
@@ -1414,6 +1416,9 @@ export class Character extends Container {
       this.pathFollower.clear();
       this.pathDestination = null;
       this.replanCount = 0;
+    } else {
+      this.lastAutonomyPickLifeMinutes = this.lifeMinutes;
+      this.autonomyCommitUntilLifeMinutes = this.lifeMinutes + AUTONOMY_MIN_DWELL_MINUTES;
     }
     return true;
   }
@@ -1429,12 +1434,17 @@ export class Character extends Container {
     const needBoost = this.needBoostForActivity(waypoint.activity);
     const fatiguePenalty = (this.activityFatigue.get(waypoint.activity) ?? 0) * 0.2;
     const pursuitBonus = this.pursuitTarget && this.pursuitTarget.roomId === waypoint.roomId ? 0.32 : 0;
+    const inertiaBonus = this.autonomousWaypoint
+      && waypoint.roomId === this.autonomousWaypoint.roomId
+      && waypoint.activity === this.autonomousWaypoint.activity
+      ? 0.18 : 0;
     return noveltyReward
       + activityNovelty
       + travelBand
       + hobbyBoost
       + needBoost
       + pursuitBonus
+      + inertiaBonus
       - classroomPenalty
       - fatiguePenalty
       + Math.random() * 0.08;

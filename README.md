@@ -1,6 +1,18 @@
-# Lemona World
+<p align="center">
+  <img src="./public/assets/readme_assets/lemona_pixel_logo.png" alt="Lemona logo" width="140" />
+</p>
 
-Multi-agent game world interface: publish tasks, watch NPCs pick them up, work through agent states, and return results.
+<h1 align="center">Lemona World</h1>
+
+<p align="center">
+  Multi-agent game world interface: publish tasks, watch NPCs pick them up, work through agent states, and return results.
+</p>
+
+<p align="center">
+  <img src="./public/assets/readme_assets/Lemona_world_demo.gif" alt="Lemona world demo" />
+</p>
+
+---
 
 ## What Makes It Different
 
