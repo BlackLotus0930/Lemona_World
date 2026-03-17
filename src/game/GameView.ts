@@ -19,15 +19,20 @@ import type {
   AgentDailyPlanContext,
   AgentDailyPlanPayload,
   AgentDialogueContext,
+  AgentDialogueLine,
+  AgentEmotionTone,
   AgentDailyPlanWindow,
   AgentPlanIntentAction,
   AgentMemoryEntry,
   AgentStatusSnapshot,
+  AgentTask,
 } from '../agent/types';
 import { createProtocolEvent, TaskEventBus, type AgentProtocolEvent } from '../agent/protocol';
 import type { AgentBridgeClient } from '../agent/bridge/AgentBridgeClient';
+import type { OpenClawBridgeClient } from '../agent/bridge/OpenClawBridgeClient';
 import { RelayProvider } from '../agent/bridge/providers/RelayProvider';
 import { WebSocketProvider } from '../agent/bridge/providers/WebSocketProvider';
+import { OpenClawWebSocketProvider } from '../agent/bridge/providers/OpenClawWebSocketProvider';
 import { NavGrid, type TilePoint } from './nav/NavGrid';
 import { ReservationManager } from './world/ReservationManager';
 import { WorldSemantics } from './world/WorldSemantics';
@@ -50,13 +55,33 @@ import {
 
 const UI_UPDATE_INTERVAL_MS = 200;
 const CAMPUS_FOCUS_ZOOM = 1.34;
-type RightPanelMode = 'dialogues' | 'thoughts';
+const DEFAULT_CLOCK_SCALE = 1.5;
+const CONVERSATION_PACING_SCALE = 1.35;
+type RightPanelMode = 'dialogues' | 'thoughts' | 'openclaw';
 type RightPanelEntry = {
   mode: RightPanelMode;
   html: string;
+  agentId?: string;
   conversationId?: string;
   pairKey?: string;
   pairLabel?: string;
+  streamId?: string;
+};
+type OpenClawJobStatus = 'queued' | 'walking_to_terminal' | 'waiting_for_events' | 'running' | 'done' | 'failed';
+type OpenClawJob = {
+  clientTaskId: string;
+  prompt: string;
+  agentId: string;
+  status: OpenClawJobStatus;
+  seatPointId?: 'hall_pc_1' | 'hall_pc_2' | 'hall_pc_3';
+  seatTileX?: number;
+  seatTileY?: number;
+  upstreamRunId?: string;
+  createdAtMinutes: number;
+  publishedAtMinutes?: number;
+  completedAtMinutes?: number;
+  lastEventAtMinutes?: number;
+  errorMessage?: string;
 };
 type ConversationDepth = 'smalltalk' | 'deep';
 type ActiveConversation = {
@@ -110,6 +135,7 @@ const MAX_CONCURRENT_CONVERSATIONS = 2;
 const SMALLTALK_BASE_COOLDOWN_MINUTES = 15;
 const DEEP_BASE_COOLDOWN_MINUTES = 120;
 const DIALOGUE_LOG_COOLDOWN_MINUTES = 0.8;
+const VISIBLE_THOUGHT_COOLDOWN_MINUTES = 14;
 const AUTOSAVE_INTERVAL_MS = 10_000;
 const COGNITION_INTERVAL_MINUTES = 24;
 const COGNITION_INTERVAL_JITTER_MINUTES = 12;
@@ -118,13 +144,18 @@ const DIALOGUE_MAX_IN_FLIGHT = 1;
 const DIALOGUE_REQUEST_SPACING_MINUTES = 0.35;
 const DIALOGUE_BACKOFF_BASE_MINUTES = 0.6;
 const DIALOGUE_BACKOFF_MAX_MINUTES = 9;
-const CONVERSATION_OPENING_DELAY_SMALLTALK_MIN = 1.9;
-const CONVERSATION_OPENING_DELAY_DEEP_MIN = 2.8;
-const CONVERSATION_REPLY_DELAY_SMALLTALK_MIN = 2.2;
-const CONVERSATION_REPLY_DELAY_DEEP_MIN = 3.1;
-const MIN_SUCCESS_TURNS_SMALLTALK = 2;
-const MIN_SUCCESS_TURNS_DEEP = 4;
+const CONVERSATION_OPENING_DELAY_SMALLTALK_MIN = 1.9 * CONVERSATION_PACING_SCALE;
+const CONVERSATION_OPENING_DELAY_DEEP_MIN = 2.8 * CONVERSATION_PACING_SCALE;
+const CONVERSATION_REPLY_DELAY_SMALLTALK_MIN = 2.2 * CONVERSATION_PACING_SCALE;
+const CONVERSATION_REPLY_DELAY_DEEP_MIN = 3.1 * CONVERSATION_PACING_SCALE;
+const MIN_SUCCESS_TURNS_SMALLTALK = 4;
+const MIN_SUCCESS_TURNS_DEEP = 6;
 const MAX_SILENT_FAILURES_PER_CONVERSATION = 6;
+const SHIFT_ACTIVITY_MIN_CONFIDENCE = 0.72;
+const SHIFT_ACTIVITY_MIN_URGENCY = 0.68;
+const SHIFT_ACTIVITY_COOLDOWN_MINUTES = 90;
+const SHIFT_ACTIVITY_MIN_MINUTES = 26;
+const SHIFT_ACTIVITY_MAX_MINUTES = 122;
 const DAILY_PLAN_CHECK_INTERVAL_MINUTES = 12;
 const DAILY_PLAN_BLOCK_MIN_DURATION = 30;
 const DAILY_PLAN_REPLAN_COOLDOWN_MINUTES = 210;
@@ -159,6 +190,14 @@ const DAILY_PLAN_ROOM_HINTS: Record<string, string[]> = {
   bathroom1: ['shower', 'laundry'],
   bathroom2: ['shower', 'laundry'],
 };
+const HALL_PC_SEATS: Array<{ id: 'hall_pc_1' | 'hall_pc_2' | 'hall_pc_3'; tileX: number; tileY: number }> = [
+  { id: 'hall_pc_1', tileX: 31, tileY: 20 },
+  { id: 'hall_pc_2', tileX: 33, tileY: 20 },
+  { id: 'hall_pc_3', tileX: 35, tileY: 20 },
+];
+const OPENCLAW_WALK_TIMEOUT_MINUTES = 40;
+const OPENCLAW_WAIT_EVENTS_TIMEOUT_MINUTES = 120;
+const OPENCLAW_RUNNING_TIMEOUT_MINUTES = 180;
 
 export class GameView {
   private app: Application;
@@ -169,6 +208,7 @@ export class GameView {
   private timeControls: TimeControls;
   private eventBus = new TaskEventBus();
   private bridge: AgentBridgeClient;
+  private openClawBridge: OpenClawBridgeClient;
   private navGrid?: NavGrid;
   private reservationManager = new ReservationManager();
   private worldSemantics = new WorldSemantics(this.reservationManager);
@@ -191,6 +231,8 @@ export class GameView {
   private behaviorConfig = { ...DEFAULT_BEHAVIOR_CONFIG };
   private rightPanelMode: RightPanelMode = 'dialogues';
   private rightPanelEntries: RightPanelEntry[] = [];
+  private visibleThoughtCooldownUntil = new Map<string, number>();
+  private lastVisibleThoughtByAgent = new Map<string, string>();
   private selectedCharacterId: string | null = null;
   private sidebarViewMode: 'list' | 'detail' | null = null;
   private sidebarRenderSignature = '';
@@ -199,9 +241,10 @@ export class GameView {
   private autosaveTickMs = 0;
   private autosaveInFlight = false;
   private sleepFastForwardActive = false;
-  private sleepFastForwardPrevScale = 1;
+  private sleepFastForwardPrevClockScale = DEFAULT_CLOCK_SCALE;
   private cognitionByAgent = new Map<string, AgentCognitionPayload & { updatedAt: number }>();
   private cognitionCooldownUntil = new Map<string, number>();
+  private shiftActivityCooldownUntil = new Map<string, number>();
   private cognitionInFlight = new Set<string>();
   private degradedModeActive = false;
   private degradedModeReason: string | null = null;
@@ -245,10 +288,14 @@ export class GameView {
   private nextAutonomyValidationAt = 0;
   private autonomyHistoryByAgent = new Map<string, Array<{ roomId: string; activity: string }>>();
   private autonomyValidationCooldownUntil = new Map<string, number>();
+  private openClawJobs: OpenClawJob[] = [];
+  private lastOpenClawAgentId: string | null = null;
+  private openClawStreamAccumulator = new Map<string, string>();
 
   constructor(app: Application) {
     this.app = app;
     this.schedule = new Schedule();
+    this.schedule.setClockScale(DEFAULT_CLOCK_SCALE);
     this.worldContainer = new Container();
     this.world = new World();
     this.behaviorConfig = this.readBehaviorConfigFromQuery();
@@ -275,9 +322,11 @@ export class GameView {
     this.app.stage.addChild(this.worldContainer);
     this.timeControls = new TimeControls(this.schedule);
     this.bridge = this.createBridgeProvider();
+    this.openClawBridge = this.createOpenClawBridgeProvider();
 
     this.eventBus.subscribe((event) => this.handleProtocolEvent(event));
     this.bridge.subscribeEvents((event) => this.eventBus.publish(event));
+    this.openClawBridge.subscribeEvents((event) => this.handleOpenClawBridgeEvent(event));
 
     // Hook up the new UI task input
     const taskInput = document.querySelector('.task-input') as HTMLInputElement;
@@ -289,6 +338,7 @@ export class GameView {
         }
       });
     }
+    this.setupOpenClawComposer();
     this.setupRightPanelSwitch();
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && this.selectedCharacterId) {
@@ -351,6 +401,11 @@ export class GameView {
       this.degradedModeReason = 'bridge_unavailable';
       this.logToActivityPanel('[System] Bridge unavailable. Running in degraded autonomous mode.');
     }
+    try {
+      await this.openClawBridge.connect();
+    } catch {
+      this.appendOpenClawEntry('System', 'OpenClaw bridge unavailable. OpenClaw tasks are paused.');
+    }
 
     if (options.initialSnapshot) {
       this.applySnapshot(options.initialSnapshot);
@@ -386,7 +441,8 @@ export class GameView {
   }
 
   private update(deltaMs: number) {
-    this.schedule.update(deltaMs);
+    const clockDeltaMs = deltaMs * this.schedule.getClockScale();
+    this.schedule.update(clockDeltaMs);
 
     const deltaMinutes = (deltaMs / 1000) * this.schedule.getTimeScale();
     if (!this.schedule.isPaused()) {
@@ -402,6 +458,7 @@ export class GameView {
       this.maybeStartFormulaConversation(scheduleTotalMinutes);
       this.runAutonomyValidation(scheduleTotalMinutes);
       this.updateSocialConversations(deltaMinutes);
+      this.updateOpenClawSimulation(scheduleTotalMinutes);
       this.updateSleepFastForward();
     }
 
@@ -440,19 +497,19 @@ export class GameView {
     });
     if (allSleeping) {
       if (!this.sleepFastForwardActive) {
-        this.sleepFastForwardPrevScale = this.schedule.getTimeScale();
+        this.sleepFastForwardPrevClockScale = this.schedule.getClockScale();
       }
       this.sleepFastForwardActive = true;
-      if (this.schedule.getTimeScale() !== 32) {
-        this.schedule.setTimeScale(32);
+      if (this.schedule.getClockScale() !== 32) {
+        this.schedule.setClockScale(32);
       }
       return;
     }
     if (!this.sleepFastForwardActive) return;
     this.sleepFastForwardActive = false;
-    const restoreScale = this.sleepFastForwardPrevScale > 0 ? this.sleepFastForwardPrevScale : 1;
-    if (this.schedule.getTimeScale() !== restoreScale) {
-      this.schedule.setTimeScale(restoreScale);
+    const restoreScale = this.sleepFastForwardPrevClockScale > 0 ? this.sleepFastForwardPrevClockScale : DEFAULT_CLOCK_SCALE;
+    if (this.schedule.getClockScale() !== restoreScale) {
+      this.schedule.setClockScale(restoreScale);
     }
   }
 
@@ -562,6 +619,7 @@ export class GameView {
 
     this.cognitionInFlight.clear();
     this.cognitionCooldownUntil.clear();
+    this.shiftActivityCooldownUntil.clear();
     this.dailyPlanInFlight.clear();
     this.dailyPlanRequestQueue = [];
     this.dailyPlanQueueFallbackByAgent.clear();
@@ -571,18 +629,365 @@ export class GameView {
     this.dialogueFailureStreak = 0;
 
     this.selectedCharacterId = snapshot.ui?.selectedCharacterId ?? null;
-    this.rightPanelMode = snapshot.ui?.rightPanelMode === 'thoughts' ? 'thoughts' : 'dialogues';
+    this.rightPanelMode =
+      snapshot.ui?.rightPanelMode === 'thoughts'
+        ? 'thoughts'
+        : snapshot.ui?.rightPanelMode === 'openclaw'
+          ? 'openclaw'
+          : 'dialogues';
     this.rightPanelEntries = (snapshot.ui?.rightPanelEntries ?? []).map((entry) => ({
-      mode: entry.mode === 'thoughts' ? 'thoughts' : 'dialogues',
+      mode:
+        entry.mode === 'thoughts'
+          ? 'thoughts'
+          : entry.mode === 'openclaw'
+            ? 'openclaw'
+            : 'dialogues',
       html: entry.html,
+      agentId: typeof entry.agentId === 'string' ? entry.agentId : undefined,
       conversationId: typeof entry.conversationId === 'string' ? entry.conversationId : undefined,
       pairKey: typeof entry.pairKey === 'string' ? entry.pairKey : undefined,
       pairLabel: typeof entry.pairLabel === 'string' ? entry.pairLabel : undefined,
+      streamId: typeof entry.streamId === 'string' ? entry.streamId : undefined,
     }));
+    this.visibleThoughtCooldownUntil.clear();
+    this.lastVisibleThoughtByAgent.clear();
     this.sidebarRenderSignature = '';
     this.updateSidebars();
+    this.syncRightPanelTabActiveState();
     this.renderRightPanelEntries();
     this.timeControls.update();
+  }
+
+  private syncRightPanelTabActiveState(): void {
+    const tabs = Array.from(document.querySelectorAll('.sidebar.right .stream-tab')) as HTMLButtonElement[];
+    const targetStream =
+      this.rightPanelMode === 'thoughts' ? 'thoughts' : this.rightPanelMode === 'openclaw' ? 'openclaw' : 'dialogues';
+    for (const tab of tabs) {
+      tab.classList.toggle('active', tab.dataset.stream === targetStream);
+    }
+    this.updateOpenClawComposerVisibility();
+  }
+
+  private setupOpenClawComposer(): void {
+    const input = document.querySelector('.openclaw-task-input') as HTMLInputElement | null;
+    const submit = document.querySelector('.openclaw-submit') as HTMLButtonElement | null;
+    if (!input || !submit) return;
+
+    const submitPrompt = () => {
+      const prompt = input.value.trim();
+      if (!prompt) return;
+      this.submitOpenClawPrompt(prompt);
+      input.value = '';
+    };
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      submitPrompt();
+    });
+    submit.addEventListener('click', submitPrompt);
+    this.updateOpenClawComposerVisibility();
+  }
+
+  private updateOpenClawComposerVisibility(): void {
+    const composer = document.querySelector('.openclaw-input-wrapper') as HTMLElement | null;
+    if (!composer) return;
+    composer.style.display = this.rightPanelMode === 'openclaw' ? 'block' : 'none';
+  }
+
+  private submitOpenClawPrompt(prompt: string): void {
+    const agent = this.pickOpenClawAgent();
+    if (!agent) {
+      this.appendOpenClawEntry('System', 'No available NPC for OpenClaw run right now.');
+      return;
+    }
+    const now = this.schedule.getTotalMinutes();
+    const job: OpenClawJob = {
+      clientTaskId: `openclaw_${Date.now()}_${this.openClawJobs.length}`,
+      prompt,
+      agentId: agent.id,
+      status: 'queued',
+      createdAtMinutes: now,
+    };
+    this.openClawJobs.push(job);
+    this.lastOpenClawAgentId = agent.id;
+    const taskLabel = `${agent.name} • ${job.clientTaskId.slice(-6)}`;
+    this.appendOpenClawEntry('User', prompt, job.clientTaskId, taskLabel);
+    this.appendOpenClawEntry('System', `Queued ${agent.name} for OpenClaw task.`, job.clientTaskId, taskLabel);
+    this.tryStartNextOpenClawJob();
+  }
+
+  private tryStartNextOpenClawJob(): void {
+    const activeJob = this.openClawJobs.find((job) =>
+      job.status === 'walking_to_terminal'
+      || job.status === 'waiting_for_events'
+      || job.status === 'running');
+    if (activeJob) return;
+    const nextQueued = this.openClawJobs.find((job) => job.status === 'queued');
+    if (!nextQueued) return;
+    const agent = this.getCharacterById(nextQueued.agentId);
+    if (!agent) {
+      nextQueued.status = 'failed';
+      nextQueued.errorMessage = 'Assigned NPC missing';
+      nextQueued.completedAtMinutes = this.schedule.getTotalMinutes();
+      this.appendOpenClawEntry('System', `Failed to start ${nextQueued.clientTaskId}: assigned NPC missing.`);
+      return;
+    }
+    const seat = this.pickHallPcSeatForAgent(agent);
+    nextQueued.status = 'walking_to_terminal';
+    nextQueued.seatPointId = seat.id;
+    nextQueued.seatTileX = seat.tileX;
+    nextQueued.seatTileY = seat.tileY;
+    agent.assignTask(nextQueued.clientTaskId, seat.tileX, seat.tileY);
+    agent.setStatusText(`Heading to ${seat.id}`);
+    this.appendOpenClawEntry(agent.name, `Heading to hall_computer_corner (${seat.id}).`, nextQueued.clientTaskId, this.getOpenClawTaskLabel(nextQueued));
+  }
+
+  private pickOpenClawAgent(): Character | null {
+    if (this.characters.length === 0) return null;
+    const idle = this.characters.filter((character) => character.getRuntimeState() === 'idle_life');
+    if (idle.length === 0) return null;
+    if (this.lastOpenClawAgentId) {
+      const alternate = idle.find((character) => character.id !== this.lastOpenClawAgentId);
+      if (alternate) return alternate;
+    }
+    return idle[0] ?? null;
+  }
+
+  private pickHallPcSeatForAgent(agent: Character): { id: 'hall_pc_1' | 'hall_pc_2' | 'hall_pc_3'; tileX: number; tileY: number } {
+    const tile = agent.getCurrentTile();
+    let best = HALL_PC_SEATS[0];
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const seat of HALL_PC_SEATS) {
+      const distance = Math.abs(tile.x - seat.tileX) + Math.abs(tile.y - seat.tileY);
+      if (distance < bestDistance) {
+        best = seat;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
+  private updateOpenClawSimulation(nowMinutes: number): void {
+    const job = this.openClawJobs.find((entry) =>
+      entry.status === 'walking_to_terminal'
+      || entry.status === 'waiting_for_events'
+      || entry.status === 'running');
+    if (!job) {
+      this.tryStartNextOpenClawJob();
+      return;
+    }
+    const agent = this.getCharacterById(job.agentId);
+    if (!agent) {
+      job.status = 'failed';
+      this.appendOpenClawEntry('System', `OpenClaw job failed: NPC ${job.agentId} not found.`, job.clientTaskId, this.getOpenClawTaskLabel(job));
+      this.tryStartNextOpenClawJob();
+      return;
+    }
+
+    if (job.status === 'walking_to_terminal') {
+      const seatId = job.seatPointId;
+      if (!seatId) {
+        job.status = 'failed';
+        this.appendOpenClawEntry(agent.name, 'Aborted: OpenClaw seat assignment missing.', job.clientTaskId, this.getOpenClawTaskLabel(job));
+        this.tryStartNextOpenClawJob();
+        return;
+      }
+      if ((nowMinutes - job.createdAtMinutes) > OPENCLAW_WALK_TIMEOUT_MINUTES) {
+        job.status = 'failed';
+        job.errorMessage = 'NPC walk timeout';
+        job.completedAtMinutes = nowMinutes;
+        this.appendOpenClawEntry(agent.name, `OpenClaw walk timeout for ${job.clientTaskId}.`, job.clientTaskId, this.getOpenClawTaskLabel(job));
+        agent.resumeNormalLifeWithRest(18, 'hall1');
+        this.tryStartNextOpenClawJob();
+        return;
+      }
+      if (agent.getRuntimeState() !== 'working') return;
+      job.status = 'waiting_for_events';
+      job.publishedAtMinutes = nowMinutes;
+      job.lastEventAtMinutes = nowMinutes;
+      agent.setFacingDirection('up');
+      agent.setStatusText(`Using ${job.seatPointId ?? 'hall_pc'} for OpenClaw`);
+      this.appendOpenClawEntry(agent.name, `Arrived at ${job.seatPointId ?? 'hall_pc'}. Starting OpenClaw run.`, job.clientTaskId, this.getOpenClawTaskLabel(job));
+      this.publishOpenClawTask(job, agent, nowMinutes);
+      return;
+    }
+
+    if (job.status === 'waiting_for_events') {
+      const lastTouch = job.lastEventAtMinutes ?? job.publishedAtMinutes ?? nowMinutes;
+      if ((nowMinutes - lastTouch) > OPENCLAW_WAIT_EVENTS_TIMEOUT_MINUTES) {
+        job.status = 'failed';
+        job.errorMessage = 'No OpenClaw events received after publish';
+        job.completedAtMinutes = nowMinutes;
+        this.appendOpenClawEntry('System', `OpenClaw task ${job.clientTaskId} timed out waiting for events.`, job.clientTaskId, this.getOpenClawTaskLabel(job));
+        agent.resumeNormalLifeWithRest(18, 'hall1');
+        this.tryStartNextOpenClawJob();
+      }
+      return;
+    }
+
+    if (job.status === 'running') {
+      const lastTouch = job.lastEventAtMinutes ?? job.publishedAtMinutes ?? nowMinutes;
+      if ((nowMinutes - lastTouch) > OPENCLAW_RUNNING_TIMEOUT_MINUTES) {
+        job.status = 'failed';
+        job.errorMessage = 'OpenClaw execution timeout';
+        job.completedAtMinutes = nowMinutes;
+        this.appendOpenClawEntry('System', `OpenClaw task ${job.clientTaskId} timed out during execution.`, job.clientTaskId, this.getOpenClawTaskLabel(job));
+        agent.resumeNormalLifeWithRest(18, 'hall1');
+        this.tryStartNextOpenClawJob();
+      }
+      return;
+    }
+  }
+
+  private appendOpenClawEntry(actor: string, message: string, taskId?: string, taskLabel?: string): void {
+    const actorLabel = this.escapeHtml(actor);
+    const text = this.escapeHtml(message);
+    this.appendRightPanelEntry(
+      'openclaw',
+      `<span class="agent">${actorLabel}</span>: ${text}`,
+      taskId ? { conversationId: taskId, pairLabel: taskLabel ?? taskId } : undefined,
+    );
+  }
+
+  private appendOpenClawMarkdownEntry(actor: string, markdown: string, taskId?: string, taskLabel?: string): void {
+    const actorLabel = this.escapeHtml(actor);
+    const rendered = this.renderMarkdownToHtml(markdown);
+    this.appendRightPanelEntry(
+      'openclaw',
+      `<span class="agent">${actorLabel}</span>:<div class="openclaw-md">${rendered}</div>`,
+      taskId ? { conversationId: taskId, pairLabel: taskLabel ?? taskId } : undefined,
+    );
+  }
+
+  private updateOrCreateStreamEntry(taskId: string, taskLabel: string, actor: string, accumulated: string): void {
+    const streamId = `stream:${taskId}`;
+    const existing = this.rightPanelEntries.find((e) => e.streamId === streamId);
+    const actorLabel = this.escapeHtml(actor);
+    const rendered = this.renderMarkdownToHtml(accumulated);
+    const html = `<span class="agent">${actorLabel}</span>:<div class="openclaw-md">${rendered}</div>`;
+
+    if (existing) {
+      existing.html = html;
+    } else {
+      this.rightPanelEntries.push({
+        mode: 'openclaw',
+        html,
+        conversationId: taskId,
+        pairLabel: taskLabel,
+        streamId,
+      });
+    }
+
+    if (this.rightPanelMode !== 'openclaw') return;
+
+    const domEl = document.querySelector(`[data-stream-id="${streamId}"]`);
+    if (domEl) {
+      domEl.innerHTML = html;
+      const logContainer = document.querySelector('.sidebar.right .panel-content');
+      if (logContainer) logContainer.scrollTop = logContainer.scrollHeight;
+    } else {
+      this.renderRightPanelEntries();
+    }
+  }
+
+  private getOpenClawTaskLabel(job: OpenClawJob): string {
+    const agentName = this.characterNameMap.get(job.agentId) ?? job.agentId;
+    return `${agentName} • ${job.clientTaskId.slice(-6)}`;
+  }
+
+  private renderMarkdownToHtml(md: string): string {
+    const lines = md.split('\n');
+    const parts: string[] = [];
+    let inCode = false;
+    const codeBuf: string[] = [];
+    let listType: 'ul' | 'ol' | null = null;
+
+    const closeList = () => {
+      if (listType) { parts.push(listType === 'ul' ? '</ul>' : '</ol>'); listType = null; }
+    };
+
+    for (const line of lines) {
+      if (line.trimStart().startsWith('```')) {
+        if (inCode) {
+          parts.push(`<pre><code>${this.escapeHtml(codeBuf.join('\n'))}</code></pre>`);
+          codeBuf.length = 0;
+          inCode = false;
+        } else {
+          closeList();
+          inCode = true;
+        }
+        continue;
+      }
+      if (inCode) { codeBuf.push(line); continue; }
+
+      const hMatch = line.match(/^(#{1,3})\s+(.+)$/);
+      if (hMatch) {
+        closeList();
+        const level = hMatch[1].length + 2;
+        parts.push(`<h${level}>${this.renderInlineMd(hMatch[2])}</h${level}>`);
+        continue;
+      }
+
+      const ulMatch = line.match(/^\s*[*-]\s+(.+)$/);
+      if (ulMatch) {
+        if (listType !== 'ul') { closeList(); parts.push('<ul>'); listType = 'ul'; }
+        parts.push(`<li>${this.renderInlineMd(ulMatch[1])}</li>`);
+        continue;
+      }
+
+      const olMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+      if (olMatch) {
+        if (listType !== 'ol') { closeList(); parts.push('<ol>'); listType = 'ol'; }
+        parts.push(`<li>${this.renderInlineMd(olMatch[1])}</li>`);
+        continue;
+      }
+
+      if (!line.trim()) { closeList(); continue; }
+
+      closeList();
+      parts.push(`<p>${this.renderInlineMd(line)}</p>`);
+    }
+
+    if (inCode) parts.push(`<pre><code>${this.escapeHtml(codeBuf.join('\n'))}</code></pre>`);
+    closeList();
+    return parts.join('');
+  }
+
+  private renderInlineMd(text: string): string {
+    let s = this.escapeHtml(text);
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return s;
+  }
+
+  private publishOpenClawTask(job: OpenClawJob, agent: Character, nowMinutes: number): void {
+    const task: AgentTask = {
+      id: job.clientTaskId,
+      title: job.prompt.slice(0, 48) || 'OpenClaw task',
+      prompt: job.prompt,
+      status: 'created',
+      createdAt: Date.now(),
+      assignedAgentId: agent.id,
+    };
+    void this.openClawBridge.publishTask(task)
+      .then(() => {
+        job.lastEventAtMinutes = nowMinutes;
+        this.appendOpenClawEntry(
+          'System',
+          `Published task ${job.clientTaskId} for ${this.characterNameMap.get(agent.id) ?? agent.id}.`,
+          job.clientTaskId,
+          this.getOpenClawTaskLabel(job),
+        );
+      })
+      .catch((error) => {
+        if (job.status === 'done' || job.status === 'failed') return;
+        job.status = 'failed';
+        job.errorMessage = error instanceof Error ? error.message : 'OpenClaw publish failed';
+        job.completedAtMinutes = this.schedule.getTotalMinutes();
+        this.appendOpenClawEntry('System', `Publish failed for ${job.clientTaskId}: ${job.errorMessage}`, job.clientTaskId, this.getOpenClawTaskLabel(job));
+        agent.resumeNormalLifeWithRest(18, 'hall1');
+        this.tryStartNextOpenClawJob();
+      });
   }
 
   private getCurrentScheduleMode(): 'weekday' | 'weekend' {
@@ -732,7 +1137,7 @@ export class GameView {
         if (!planPayload) {
           this.metrics.dailyPlanFailures += 1;
           this.metrics.dailyPlanFallbacks += 1;
-          return;
+      return;
         }
         const normalized = this.normalizeDailyPlanPayload(planPayload, fallbackPlan);
         if (!normalized) {
@@ -961,9 +1366,10 @@ export class GameView {
     if (event.type === 'AGENT_CONVERSATION_START') {
       if (event.dialogue?.speakerId) {
         const speaker = this.getCharacterById(event.dialogue.speakerId);
-        if (speaker && event.dialogue.text && !this.isConversationPlaceholder(event.dialogue.text)) {
-          speaker.setStatusText(event.dialogue.text);
-          speaker.showSpeechBubble(event.dialogue.text);
+        const lineText = event.dialogue.surfaceLine ?? event.dialogue.text;
+        if (speaker && lineText && !this.isConversationPlaceholder(lineText)) {
+          speaker.setStatusText(lineText);
+          speaker.showSpeechBubble(lineText);
         }
       }
       return;
@@ -986,6 +1392,91 @@ export class GameView {
         this.getCharacterById(event.agentId)?.setStatusText(event.summary);
       }
     }
+  }
+
+  private handleOpenClawBridgeEvent(event: AgentProtocolEvent): void {
+    const job = this.openClawJobs.find((entry) => entry.clientTaskId === event.taskId);
+    if (!job) return;
+    const now = this.schedule.getTotalMinutes();
+    job.lastEventAtMinutes = now;
+    const actor = this.characterNameMap.get(job.agentId) ?? job.agentId;
+    const taskId = job.clientTaskId;
+    const taskLabel = this.getOpenClawTaskLabel(job);
+
+    if (event.type === 'TASK_ASSIGNED') {
+      if (event.agentId && job.agentId !== event.agentId) {
+        this.appendOpenClawEntry('System', `Warning: bridge assigned ${actor} but local job is ${this.characterNameMap.get(job.agentId) ?? job.agentId}.`, taskId, taskLabel);
+      }
+      job.status = 'running';
+      this.appendOpenClawEntry(actor, event.summary ?? 'Accepted task', taskId, taskLabel);
+      return;
+    }
+    if (event.type === 'AGENT_THINKING' || event.type === 'AGENT_TOOL_CALL') {
+      job.status = 'running';
+      this.appendOpenClawEntry(actor, event.summary ?? event.type, taskId, taskLabel);
+      return;
+    }
+    if (event.type === 'AGENT_STREAM_CHUNK') {
+      job.status = 'running';
+      const delta = event.summary ?? '';
+      if (!delta) return;
+      const accum = (this.openClawStreamAccumulator.get(taskId) ?? '') + delta;
+      this.openClawStreamAccumulator.set(taskId, accum);
+      this.updateOrCreateStreamEntry(taskId, taskLabel, actor, accum);
+      return;
+    }
+    if (event.type === 'AGENT_RESULT') {
+      job.status = 'running';
+      const text = event.summary ?? '';
+      if (this.openClawStreamAccumulator.has(taskId)) {
+        this.openClawStreamAccumulator.set(taskId, text);
+        this.updateOrCreateStreamEntry(taskId, taskLabel, actor, text);
+      } else {
+        this.appendOpenClawMarkdownEntry(actor, text, taskId, taskLabel);
+      }
+      return;
+    }
+    if (event.type === 'AGENT_PLAN') {
+      job.status = 'running';
+      const planSummary = event.plan?.steps?.slice(0, 3).map((step) => step.text).join(' -> ');
+      this.appendOpenClawEntry(actor, planSummary ? `Plan: ${planSummary}` : (event.summary ?? 'Shared a plan.'), taskId, taskLabel);
+      return;
+    }
+    if (event.type === 'AGENT_REFLECTION') {
+      job.status = 'running';
+      this.appendOpenClawEntry(actor, event.memory?.content ?? event.summary ?? 'Recorded a reflection.', taskId, taskLabel);
+      return;
+    }
+    if (event.type === 'AGENT_MEMORY') {
+      job.status = 'running';
+      this.appendOpenClawEntry(actor, event.memory?.content ?? event.summary ?? 'Updated memory.', taskId, taskLabel);
+      return;
+    }
+    if (event.type === 'TASK_DONE') {
+      this.openClawStreamAccumulator.delete(taskId);
+      this.finishOpenClawJob(job, true, undefined, now);
+      return;
+    }
+    if (event.type === 'TASK_FAILED') {
+      this.openClawStreamAccumulator.delete(taskId);
+      const errorText = event.error ?? event.summary ?? 'Task failed';
+      this.appendOpenClawEntry(actor, `Failed: ${errorText}`, taskId, taskLabel);
+      this.finishOpenClawJob(job, false, errorText, now);
+    }
+  }
+
+  private finishOpenClawJob(job: OpenClawJob, success: boolean, errorMessage: string | undefined, nowMinutes: number): void {
+    if (job.status === 'done' || job.status === 'failed') return;
+    job.status = success ? 'done' : 'failed';
+    job.errorMessage = errorMessage;
+    job.completedAtMinutes = nowMinutes;
+    const agent = this.getCharacterById(job.agentId);
+    if (agent) {
+      agent.resumeNormalLifeWithRest(24, 'hall1');
+      const agentName = this.characterNameMap.get(job.agentId) ?? job.agentId;
+      this.appendOpenClawEntry(agentName, 'Back to normal life and taking a short rest.', job.clientTaskId, this.getOpenClawTaskLabel(job));
+    }
+    this.tryStartNextOpenClawJob();
   }
 
   private getCharacterById(agentId: string): Character | undefined {
@@ -1018,7 +1509,7 @@ export class GameView {
       if (this.shouldThrottleDialogueLog(event)) {
         return;
       }
-      const text = event.dialogue?.text ?? event.summary ?? event.type;
+      const text = event.dialogue?.surfaceLine ?? event.dialogue?.text ?? event.summary ?? event.type;
       if (this.isConversationPlaceholder(text)) {
         return;
       }
@@ -1032,6 +1523,7 @@ export class GameView {
         'dialogues',
         `<span class="agent">${this.escapeHtml(agentName)}</span>: ${this.escapeHtml(text)}`,
         {
+          agentId: speakerId ?? event.agentId,
           conversationId: event.dialogue?.conversationId,
           pairKey,
           pairLabel,
@@ -1041,21 +1533,103 @@ export class GameView {
     }
 
     if (event.type === 'AGENT_MEMORY') {
-      const thoughtText = event.memory?.content ?? event.summary ?? 'Memory update';
+      if (event.memory?.kind === 'reflection' && event.taskId === '__cognition__') {
+      return;
+    }
+      const thoughtText = this.formatThoughtTextForPanel(event.memory?.content ?? event.summary ?? 'Memory update');
+      if (!thoughtText) return;
       this.appendRightPanelEntry(
         'thoughts',
-        `<span class="agent">${this.escapeHtml(agentName)}</span> recalls: ${this.escapeHtml(thoughtText)}`,
+        `<span class="agent">${this.escapeHtml(agentName)}</span>: ${this.escapeHtml(thoughtText)}`,
+        { agentId: event.agentId },
       );
       return;
     }
 
     if (event.type === 'AGENT_COGNITION') {
-      const thoughtText = event.cognition?.thoughtText ?? event.summary ?? 'Thinking...';
+      if (!event.agentId || !event.cognition) return;
+      const now = this.schedule.getTotalMinutes();
+      if (!this.shouldSurfaceThought(event.agentId, event.cognition, now)) {
+        return;
+      }
+      const thoughtSource = event.cognition.feltThought || event.cognition.thoughtText || event.summary || 'Thinking...';
+      const thoughtText = this.formatThoughtTextForPanel(thoughtSource);
+      if (!thoughtText) return;
       this.appendRightPanelEntry(
         'thoughts',
-        `<span class="agent">${this.escapeHtml(agentName)}</span> thinks: ${this.escapeHtml(thoughtText)}`,
+        `<span class="agent">${this.escapeHtml(agentName)}</span>: ${this.escapeHtml(thoughtText)}`,
+        { agentId: event.agentId },
       );
     }
+  }
+
+  private formatThoughtTextForPanel(raw: string): string {
+    if (!raw) return '';
+    let text = raw
+      .replace(/\[outcomeTag:[^\]]+\]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!text) return '';
+
+    // Convert internal bookkeeping phrases into human-readable inner monologue.
+    if (/^memory trace:/i.test(text)) {
+      text = text.replace(/^memory trace:\s*/i, '');
+    }
+    const socialTalk = text.match(/^(smalltalk|deep)\s+talk with\s+(.+)$/i);
+    if (socialTalk) {
+      const depth = socialTalk[1].toLowerCase() === 'deep' ? 'serious' : 'brief';
+      const who = socialTalk[2].trim();
+      text = `I just had a ${depth} conversation with ${who}.`;
+    }
+
+    if (/^noted social interaction$/i.test(text)) {
+      text = 'That interaction might matter later.';
+    } else if (/^memory update$/i.test(text)) {
+      text = 'Something about that moment feels worth remembering.';
+    } else if (/^thinking\.\.\.$/i.test(text)) {
+      text = 'I am trying to make sense of what to do next.';
+    }
+
+    if (!/[.!?]$/.test(text)) {
+      text += '.';
+    }
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  private shouldSurfaceThought(
+    agentId: string,
+    cognition: AgentCognitionPayload,
+    nowMinutes: number,
+  ): boolean {
+    const feltRaw = cognition.feltThought || cognition.thoughtText || '';
+    const normalizedThought = feltRaw.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!normalizedThought) return false;
+
+    const lastThought = this.lastVisibleThoughtByAgent.get(agentId);
+    const cooldownUntil = this.visibleThoughtCooldownUntil.get(agentId) ?? 0;
+    const prior = this.cognitionByAgent.get(agentId);
+    const staleVisible = nowMinutes >= cooldownUntil;
+
+    const planChanged = !prior
+      || prior.planIntent.action !== cognition.planIntent.action
+      || prior.planIntent.targetAgentId !== cognition.planIntent.targetAgentId
+      || prior.planIntent.activity !== cognition.planIntent.activity;
+    const toneChanged = this.normalizeTone(prior?.emotionTone) !== this.normalizeTone(cognition.emotionTone);
+    const subtextChanged = prior?.subtext !== cognition.subtext;
+    const thoughtChanged = lastThought !== normalizedThought;
+
+    const shouldShow = !lastThought || planChanged || toneChanged || subtextChanged || (thoughtChanged && staleVisible);
+    if (!shouldShow) {
+      return false;
+    }
+
+    this.lastVisibleThoughtByAgent.set(agentId, normalizedThought);
+    this.visibleThoughtCooldownUntil.set(agentId, nowMinutes + VISIBLE_THOUGHT_COOLDOWN_MINUTES);
+    return true;
+  }
+
+  private normalizeTone(tone: AgentEmotionTone | undefined): AgentEmotionTone | 'none' {
+    return tone ?? 'none';
   }
 
   private shouldThrottleDialogueLog(event: AgentProtocolEvent): boolean {
@@ -1067,8 +1641,8 @@ export class GameView {
     }
     const key = event.dialogue?.dedupeKey
       ?? (speakerId && listenerId
-        ? `${this.makePairKey(speakerId, listenerId)}:${event.type}:${event.dialogue?.text ?? ''}`
-        : `${conversationId ?? 'dialogue'}:${event.type}:${event.dialogue?.text ?? ''}`);
+        ? `${this.makePairKey(speakerId, listenerId)}:${event.type}:${event.dialogue?.surfaceLine ?? event.dialogue?.text ?? ''}`
+        : `${conversationId ?? 'dialogue'}:${event.type}:${event.dialogue?.surfaceLine ?? event.dialogue?.text ?? ''}`);
     const now = this.schedule.getTotalMinutes();
     const until = this.dialogueLogCooldownUntil.get(key) ?? 0;
     if (now < until) {
@@ -1087,25 +1661,30 @@ export class GameView {
     if (tabs.length === 0) return;
     for (const tab of tabs) {
       tab.addEventListener('click', () => {
-        const mode = tab.dataset.stream === 'thoughts' ? 'thoughts' : 'dialogues';
+        const stream = tab.dataset.stream;
+        const mode: RightPanelMode =
+          stream === 'thoughts' ? 'thoughts' : stream === 'openclaw' ? 'openclaw' : 'dialogues';
         this.rightPanelMode = mode;
         this.renderRightPanelEntries();
+        this.updateOpenClawComposerVisibility();
         tabs.forEach((button) => {
           button.classList.toggle('active', button === tab);
         });
       });
     }
     this.renderRightPanelEntries();
+    this.updateOpenClawComposerVisibility();
   }
 
   private appendRightPanelEntry(
     mode: RightPanelMode,
     html: string,
-    meta?: { conversationId?: string; pairKey?: string; pairLabel?: string },
+    meta?: { agentId?: string; conversationId?: string; pairKey?: string; pairLabel?: string },
   ): void {
     this.rightPanelEntries.push({
       mode,
       html,
+      agentId: meta?.agentId,
       conversationId: meta?.conversationId,
       pairKey: meta?.pairKey,
       pairLabel: meta?.pairLabel,
@@ -1127,12 +1706,53 @@ export class GameView {
     if (entries.length === 0) {
       const placeholder = document.createElement('div');
       placeholder.className = 'log-empty-state';
-      const label = this.rightPanelMode === 'dialogues' ? 'No dialogue yet' : 'No thoughts yet';
-      const hint = this.rightPanelMode === 'dialogues'
-        ? 'Post a task and agent conversations will appear here.'
-        : 'Post a task and agent reflections will appear here.';
+      const label =
+        this.rightPanelMode === 'dialogues'
+          ? 'No dialogue yet'
+          : this.rightPanelMode === 'thoughts'
+            ? 'No thoughts yet'
+            : 'No Openclaw yet';
+      const hint =
+        this.rightPanelMode === 'dialogues'
+          ? 'Post a task and agent conversations will appear here.'
+          : this.rightPanelMode === 'thoughts'
+            ? 'Post a task and agent reflections will appear here.'
+            : 'Openclaw output will appear here when connected.';
       placeholder.innerHTML = `<strong>${label}</strong>${hint}`;
       logContainer.appendChild(placeholder);
+      return;
+    }
+
+    if (this.rightPanelMode === 'openclaw') {
+      const threads = new Map<string, { label: string; items: RightPanelEntry[]; lastIndex: number }>();
+      entries.forEach((entry, index) => {
+        const key = entry.conversationId ?? `openclaw:${index}`;
+        const label = entry.pairLabel ?? 'OpenClaw Task';
+        const thread = threads.get(key);
+        if (thread) {
+          thread.items.push(entry);
+          thread.lastIndex = index;
+        } else {
+          threads.set(key, { label, items: [entry], lastIndex: index });
+        }
+      });
+      const orderedThreads = [...threads.values()].sort((a, b) => a.lastIndex - b.lastIndex);
+      for (const thread of orderedThreads) {
+        const header = document.createElement('div');
+        header.className = 'log-entry';
+        header.style.fontWeight = '600';
+        header.style.background = 'rgba(0, 0, 0, 0.05)';
+        header.textContent = thread.label;
+        logContainer.appendChild(header);
+        for (const line of thread.items) {
+          const entry = document.createElement('div');
+          entry.className = line.streamId ? 'log-entry openclaw-stream-entry' : 'log-entry';
+          if (line.streamId) entry.setAttribute('data-stream-id', line.streamId);
+          entry.innerHTML = line.html;
+          logContainer.appendChild(entry);
+        }
+      }
+      logContainer.scrollTop = logContainer.scrollHeight;
       return;
     }
 
@@ -1208,7 +1828,23 @@ export class GameView {
         )
           .map((n) => `${n.id}:${n.confidence.toFixed(2)}:${n.dominance.toFixed(2)}`)
           .join(',');
-        const detailSignature = this.buildDetailSidebarSignature(selectedStatus, memories, relationKeys, narrativeSignature);
+        const cognition = this.cognitionByAgent.get(selectedStatus.agentId);
+        const cognitionSignature = cognition
+          ? [
+            cognition.feltThought ?? '',
+            cognition.planIntent.action,
+            cognition.planIntent.activity ?? '',
+            cognition.planIntent.targetAgentId ?? '',
+            String(cognition.updatedAt ?? 0),
+          ].join(':')
+          : 'none';
+        const detailSignature = this.buildDetailSidebarSignature(
+          selectedStatus,
+          memories,
+          relationKeys,
+          narrativeSignature,
+          cognitionSignature,
+        );
         if (this.sidebarViewMode === 'detail' && this.sidebarRenderSignature === detailSignature) {
           return;
         }
@@ -1283,24 +1919,51 @@ export class GameView {
     const stateColor = this.getSidebarStateColor(status);
     const description = this.getCharacterDescription(status.agentId);
     const activityLabel = this.formatActivityStatus(status.currentActivity ?? 'rest');
-    const relationships = statuses
+    const cognition = this.cognitionByAgent.get(status.agentId);
+    const currentThought = cognition?.feltThought || cognition?.thoughtText || '';
+    const currentPlan = this.describePlanIntent(cognition?.planIntent);
+    const emotionLabel = simulation?.dynamicState.currentEmotion?.label ?? '';
+    const emotionIntensity = simulation?.dynamicState.currentEmotion?.intensity ?? 0;
+
+    const bio = profile
+      ? (profile.identityStructure.socialExperience || profile.identityStructure.initialGoalOrAnxiety)
+      : '';
+
+    const allRelationships = statuses
       .filter((entry) => entry.agentId !== status.agentId)
       .map((entry) => ({
         name: entry.agentName,
+        agentId: entry.agentId,
         value: this.getRelationshipAffinity(status.agentId, entry.agentId),
-      }))
-      .filter((entry) => entry.value !== 0);
-
-    const relationshipHtml = relationships
+      }));
+    const relationshipBubbles = allRelationships
+      .filter((entry) => entry.value !== 0)
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      .slice(0, 6)
       .map((entry) => {
-        const tone = entry.value > 0 ? 'positive' : 'negative';
+        const ringColor = entry.value >= 20 ? '#22c55e' : entry.value > 0 ? '#86efac' : entry.value <= -20 ? '#ef4444' : '#fca5a5';
+        const relUrl = `./assets/characters_profile_pictures/${entry.name}_profile.png`;
         const label = this.getRelationshipLabel(entry.value);
-        return `<div class="character-detail-relationship-item">
-          <span class="character-detail-relationship-name">${this.escapeHtml(entry.name)}</span>
-          <span class="character-detail-relationship-value ${tone}">${this.escapeHtml(label)}</span>
+        return `<div class="cd-rel-bubble" title="${this.escapeHtml(entry.name)}: ${this.escapeHtml(label)}">
+          <div class="cd-rel-ring" style="border-color:${ringColor}">
+            <img src="${relUrl}" alt="${this.escapeHtml(entry.name.charAt(0))}" onerror="this.style.display='none'; this.parentElement.querySelector('.cd-rel-fallback').style.display='flex';" />
+            <span class="cd-rel-fallback">${this.escapeHtml(entry.name.charAt(0))}</span>
+          </div>
+          <span class="cd-rel-name">${this.escapeHtml(entry.name)}</span>
         </div>`;
       })
       .join('');
+
+    const moodEmoji = this.getEmotionEmoji(emotionLabel);
+    const moodText = emotionLabel
+      ? `${moodEmoji} ${emotionLabel.charAt(0).toUpperCase() + emotionLabel.slice(1)}`
+      : 'Neutral';
+
+    const recentVisibleThoughts = this.rightPanelEntries
+      .filter((entry) => entry.mode === 'thoughts' && entry.agentId === status.agentId)
+      .slice(-3)
+      .map((entry) => entry.html);
+
     const identityLines = profile
       ? [
         profile.identityStructure.socialExperience,
@@ -1313,6 +1976,18 @@ export class GameView {
       .map((line) => `<div class="character-detail-memory-placeholder">${this.escapeHtml(line)}</div>`)
       .join('');
 
+    const fullRelationshipHtml = allRelationships
+      .filter((entry) => entry.value !== 0)
+      .map((entry) => {
+        const tone = entry.value > 0 ? 'positive' : 'negative';
+        const label = this.getRelationshipLabel(entry.value);
+        return `<div class="character-detail-relationship-item">
+          <span class="character-detail-relationship-name">${this.escapeHtml(entry.name)}</span>
+          <span class="character-detail-relationship-value ${tone}">${this.escapeHtml(label)}</span>
+        </div>`;
+      })
+      .join('');
+
     const oldDetailContent = container.querySelector('.character-detail-content') as HTMLElement | null;
     const previousScrollTop = oldDetailContent?.scrollTop ?? 0;
 
@@ -1320,95 +1995,118 @@ export class GameView {
       <div class="character-detail">
         <div class="character-detail-header">
           <button type="button" class="character-detail-back" aria-label="Back to characters"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
-          <span class="character-detail-header-label">Character details</span>
+          <span class="character-detail-header-label">${this.escapeHtml(status.agentName)}</span>
         </div>
 
         <div class="character-detail-content">
-          <div class="character-detail-profile">
-            <div class="character-detail-avatar">
+          <div class="cd-hero">
+            <div class="cd-hero-avatar">
               <span class="avatar-fallback">${this.escapeHtml(status.agentName.charAt(0))}</span>
               <img src="${profileUrl}" alt="${this.escapeHtml(status.agentName)}" onerror="this.style.display='none';" />
+              <span class="cd-hero-status-dot" style="background:${stateColor}"></span>
             </div>
-            <div class="character-detail-meta">
-              <h2>${this.escapeHtml(status.agentName)}</h2>
-              <div class="character-description">${this.escapeHtml(description)}</div>
-            </div>
+            <h2 class="cd-hero-name">${this.escapeHtml(status.agentName)}</h2>
+            <div class="cd-hero-desc">${this.escapeHtml(description)}</div>
+            ${bio ? `<div class="cd-hero-bio">${this.escapeHtml(bio)}</div>` : ''}
           </div>
 
-          <div class="character-detail-section">
-            <div class="character-detail-section-title">State</div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Activity</span>
-              <span class="character-detail-stat-value" style="color:${stateColor}">${this.escapeHtml(activityLabel)}</span>
+          <div class="cd-now">
+            <div class="cd-now-row">
+              <span class="cd-now-icon" style="color:${stateColor}">●</span>
+              <span class="cd-now-text">${this.escapeHtml(activityLabel)}</span>
             </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Emotion</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(this.formatEmotion(simulation?.dynamicState.currentEmotion))}</span>
+            <div class="cd-now-row">
+              <span class="cd-now-icon">${moodEmoji}</span>
+              <span class="cd-now-text">${this.escapeHtml(moodText.replace(moodEmoji + ' ', ''))}${emotionIntensity > 0 ? ` <span class="cd-now-dim">${Math.round(emotionIntensity * 100)}%</span>` : ''}</span>
             </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Goal</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(simulation?.dynamicState.currentGoal ?? 'Unknown')}</span>
-            </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Focus</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(simulation?.dynamicState.currentFocus ?? 'Unknown')}</span>
-            </div>
+            ${currentPlan !== 'No active plan' ? `<div class="cd-now-row">
+              <span class="cd-now-icon">→</span>
+              <span class="cd-now-text">${this.escapeHtml(currentPlan)}</span>
+            </div>` : ''}
           </div>
 
-          <div class="character-detail-section">
-            <div class="character-detail-section-title">Core profile</div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Openness</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.openness))}</span>
-            </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Sociability</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.sociability))}</span>
-            </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Impulse control</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.impulseControl ?? simulation?.traits.selfControl))}</span>
-            </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Sensitivity</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.sensitivity))}</span>
-            </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Boundary strength</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.boundaryStrength))}</span>
-            </div>
-            <div class="character-detail-stat-row">
-              <span class="character-detail-stat-label">Need pair</span>
-              <span class="character-detail-stat-value">${this.escapeHtml(this.formatNeeds(simulation))}</span>
-            </div>
-          </div>
+          ${currentThought ? `<div class="cd-thought">
+            <div class="cd-thought-quote">"${this.escapeHtml(this.formatThoughtTextForPanel(currentThought))}"</div>
+          </div>` : ''}
 
-          <div class="character-detail-section">
-            <div class="character-detail-section-title">Observer interpretation</div>
-            <div class="character-detail-memory-placeholder">${this.escapeHtml(observer?.readText ?? 'No observer text yet.')}</div>
-            <div class="character-detail-memory-placeholder">${this.escapeHtml(this.formatObserverBias(observer?.observerBias))}</div>
-            ${this.renderInferenceHtml(observer)}
-          </div>
+          ${relationshipBubbles ? `<div class="cd-section-mini">
+            <div class="cd-section-mini-title">Relationships</div>
+            <div class="cd-rel-row">${relationshipBubbles}</div>
+          </div>` : ''}
 
-          <div class="character-detail-section">
-            <div class="character-detail-section-title">Identity structure</div>
-            ${identityHtml}
-          </div>
+          <details class="cd-details-fold">
+            <summary class="cd-details-toggle">More details</summary>
 
-          <div class="character-detail-section">
-            <div class="character-detail-section-title">Relationships</div>
-            ${relationshipHtml}
-          </div>
+            <div class="character-detail-section">
+              <div class="character-detail-section-title">State</div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Goal</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(simulation?.dynamicState.currentGoal ?? 'Unknown')}</span>
+              </div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Focus</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(simulation?.dynamicState.currentFocus ?? 'Unknown')}</span>
+              </div>
+            </div>
 
-          <div class="character-detail-section">
-            <div class="character-detail-section-title">Self narrative</div>
-            ${this.renderSelfNarrativesHtml(runtimeNarratives)}
-          </div>
+            <div class="character-detail-section">
+              <div class="character-detail-section-title">Traits</div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Openness</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.openness))}</span>
+              </div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Sociability</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.sociability))}</span>
+              </div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Impulse control</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.impulseControl ?? simulation?.traits.selfControl))}</span>
+              </div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Sensitivity</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.sensitivity))}</span>
+              </div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Boundary strength</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(this.formatDimensionScore(simulation?.traits.boundaryStrength))}</span>
+              </div>
+              <div class="character-detail-stat-row">
+                <span class="character-detail-stat-label">Need pair</span>
+                <span class="character-detail-stat-value">${this.escapeHtml(this.formatNeeds(simulation))}</span>
+              </div>
+            </div>
 
-          <div class="character-detail-section">
-            <div class="character-detail-section-title">Memory</div>
-            <div class="character-detail-memory-placeholder">${memories} memory entr${memories === 1 ? 'y' : 'ies'}</div>
-          </div>
+            <div class="character-detail-section">
+              <div class="character-detail-section-title">Observer interpretation</div>
+              <div class="character-detail-memory-placeholder">${this.escapeHtml(observer?.readText ?? 'No observer text yet.')}</div>
+              <div class="character-detail-memory-placeholder">${this.escapeHtml(this.formatObserverBias(observer?.observerBias))}</div>
+              ${this.renderInferenceHtml(observer)}
+            </div>
+
+            <div class="character-detail-section">
+              <div class="character-detail-section-title">Identity structure</div>
+              ${identityHtml}
+            </div>
+
+            <div class="character-detail-section">
+              <div class="character-detail-section-title">All relationships</div>
+              ${fullRelationshipHtml || '<div class="character-detail-memory-placeholder">No bonds formed yet.</div>'}
+            </div>
+
+            <div class="character-detail-section">
+              <div class="character-detail-section-title">Self narrative</div>
+              ${this.renderSelfNarrativesHtml(runtimeNarratives)}
+            </div>
+
+            <div class="character-detail-section">
+              <div class="character-detail-section-title">Memory</div>
+              <div class="character-detail-memory-placeholder">${memories} memory entr${memories === 1 ? 'y' : 'ies'}</div>
+              ${recentVisibleThoughts.length > 0
+                ? recentVisibleThoughts.map((line) => `<div class="character-detail-memory-placeholder">${line}</div>`).join('')
+                : '<div class="character-detail-memory-placeholder">No recent visible thoughts.</div>'}
+            </div>
+          </details>
         </div>
       </div>
     `;
@@ -1425,6 +2123,21 @@ export class GameView {
     if (newDetailContent) {
       newDetailContent.scrollTop = previousScrollTop;
     }
+  }
+
+  private getEmotionEmoji(label: string): string {
+    const map: Record<string, string> = {
+      happy: '😊', content: '😌', excited: '🤩', playful: '😄',
+      calm: '😶', relaxed: '😌', neutral: '😐', bored: '😑',
+      sad: '😢', lonely: '😔', melancholic: '🥀', nostalgic: '🌅',
+      anxious: '😰', nervous: '😬', worried: '😟', stressed: '😣',
+      angry: '😠', frustrated: '😤', irritated: '😒',
+      curious: '🤔', interested: '👀', thoughtful: '💭',
+      tired: '😴', exhausted: '🥱', sleepy: '💤',
+      social: '🗣️', friendly: '🤗', warm: '☀️',
+      guarded: '🛡️', uneasy: '😕', tense: '😬',
+    };
+    return map[label.toLowerCase()] ?? '💭';
   }
 
   private getAgentStatuses(): AgentStatusSnapshot[] {
@@ -1457,6 +2170,7 @@ export class GameView {
     memories: number,
     relationKeys: string,
     narrativeSignature: string,
+    cognitionSignature: string,
   ): string {
     return [
       status.agentId,
@@ -1466,6 +2180,7 @@ export class GameView {
       String(memories),
       relationKeys,
       narrativeSignature,
+      cognitionSignature,
     ].join('|');
   }
 
@@ -1504,11 +2219,23 @@ export class GameView {
     return `${primaryType} ${normalized.primary}% / ${secondaryType} ${normalized.secondary}% (ratio ${secondaryRatio.toFixed(2)})`;
   }
 
-  private formatEmotion(
-    emotion: CharacterConfig['profile']['simulationLayer']['dynamicState']['currentEmotion'] | undefined,
-  ): string {
-    if (!emotion) return 'Unknown';
-    return `${emotion.label} (${Math.round(emotion.intensity * 100)}%)`;
+  private describePlanIntent(planIntent: AgentCognitionPayload['planIntent'] | undefined): string {
+    if (!planIntent) return 'No active plan';
+    if (planIntent.action === 'talk') {
+      const target = planIntent.targetAgentId
+        ? (this.characterNameMap.get(planIntent.targetAgentId) ?? planIntent.targetAgentId)
+        : 'someone';
+      return `Talk to ${target}`;
+    }
+    if (planIntent.action === 'shift_activity') {
+      const activity = planIntent.activity ? this.formatActivityStatus(planIntent.activity) : 'activity';
+      return `Shift to ${activity}`;
+    }
+    if (planIntent.action === 'reflect') {
+      return 'Reflect privately';
+    }
+    const activity = planIntent.activity ? this.formatActivityStatus(planIntent.activity) : 'current routine';
+    return `Stay with ${activity}`;
   }
 
   private formatObserverBias(bias: CharacterConfig['profile']['observerLayer']['observerBias'] | undefined): string {
@@ -1629,6 +2356,25 @@ export class GameView {
     if (stage < 0.45) return 0.34;
     if (stage < 0.7) return 0.56;
     if (stage < 0.9) return 0.78;
+    return 1;
+  }
+
+  private getPairRelationshipStage(aId: string, bId: string): 'stranger' | 'familiar' | 'friendly' | 'close' | 'tense' | 'hostile' {
+    const avgAffinity = (this.getRelationshipAffinity(aId, bId) + this.getRelationshipAffinity(bId, aId)) / 2;
+    return this.getRelationshipStageLabel(avgAffinity);
+  }
+
+  private getConversationWarmupScale(aId: string, bId: string): number {
+    const stage = this.getPairRelationshipStage(aId, bId);
+    if (stage === 'stranger') return 0.7;
+    if (stage === 'familiar') return 0.85;
+    return 1;
+  }
+
+  private getConversationImpressionScale(aId: string, bId: string): number {
+    const stage = this.getPairRelationshipStage(aId, bId);
+    if (stage === 'stranger') return 0.55;
+    if (stage === 'familiar') return 0.78;
     return 1;
   }
 
@@ -1755,6 +2501,16 @@ export class GameView {
     });
   }
 
+  private createOpenClawBridgeProvider(): OpenClawBridgeClient {
+    const params = new URLSearchParams(window.location.search);
+    const explicit = params.get('openClawBridgeUrl');
+    const bridgeUrl = params.get('bridgeUrl');
+    const wsUrl = explicit
+      ?? (bridgeUrl?.startsWith('ws://') || bridgeUrl?.startsWith('wss://') ? bridgeUrl : undefined)
+      ?? 'ws://localhost:8787';
+    return new OpenClawWebSocketProvider({ wsUrl });
+  }
+
   private readBehaviorConfigFromQuery(): typeof DEFAULT_BEHAVIOR_CONFIG {
     const params = new URLSearchParams(window.location.search);
     const numberParam = (name: string, fallback: number): number => {
@@ -1809,8 +2565,8 @@ export class GameView {
     const topicEnergy = this.topicEnergyByPair.get(pairKey) ?? 100;
     const topicEnergyCost = depth === 'deep' ? 42 : 10;
     const duration = depth === 'deep'
-      ? this.behaviorConfig.conversationDurationMinutes * 0.95
-      : Math.max(3.5, this.behaviorConfig.conversationDurationMinutes * 0.4);
+      ? this.behaviorConfig.conversationDurationMinutes * 0.95 * CONVERSATION_PACING_SCALE
+      : Math.max(3.5 * CONVERSATION_PACING_SCALE, this.behaviorConfig.conversationDurationMinutes * 0.4 * CONVERSATION_PACING_SCALE);
     const conv: ActiveConversation = {
       id,
       a: agentA,
@@ -1857,8 +2613,10 @@ export class GameView {
     conv: ActiveConversation,
     speakerId: string,
     listenerId: string,
-    text: string,
+    line: AgentDialogueLine,
   ): void {
+    const text = line.surfaceLine?.trim() || line.text?.trim() || '';
+    if (!text) return;
     const speaker = this.getCharacterById(speakerId);
     if (speaker) {
       speaker.setStatusText(text);
@@ -1874,6 +2632,9 @@ export class GameView {
         speakerId,
         listenerId,
         text,
+        surfaceLine: text,
+        emotionTone: line.emotionTone,
+        subtext: line.subtext,
         conversationId: conv.id,
         dedupeKey,
       },
@@ -1883,6 +2644,7 @@ export class GameView {
         'dialogues',
         `<span class="agent">${this.escapeHtml(speakerName)}</span>: ${this.escapeHtml(text)}`,
         {
+          agentId: speakerId,
           conversationId: conv.id,
           pairKey: conv.pairKey,
           pairLabel: `${this.characterNameMap.get(conv.a) ?? conv.a} ↔ ${this.characterNameMap.get(conv.b) ?? conv.b}`,
@@ -1899,7 +2661,7 @@ export class GameView {
     conv: ActiveConversation,
     speakerId: string,
     listenerId: string,
-  ): Promise<string | null> {
+  ): Promise<AgentDialogueLine | null> {
     const speaker = this.getCharacterById(speakerId);
     const listener = this.getCharacterById(listenerId);
     if (!speaker || !listener || typeof this.bridge.requestDialogueLine !== 'function') {
@@ -1931,6 +2693,8 @@ export class GameView {
     const listenerNeeds = listener.getNeedSnapshot();
     const speakerActivity = speaker.getCurrentActivity();
     const listenerActivity = listener.getCurrentActivity();
+    const speakerEngagement = this.getCharacterEngagementContext(speaker);
+    const listenerEngagement = this.getCharacterEngagementContext(listener);
     const sharedRecentTopics = this.extractRecentTopics(conv);
     const context: AgentDialogueContext = {
       speakerId,
@@ -1965,19 +2729,29 @@ export class GameView {
         listenerNeedsLevel: this.getNeedsLevelLabels(listenerNeeds),
         speakerActivity,
         listenerActivity,
+        speakerObjectName: speakerEngagement.objectName,
+        listenerObjectName: listenerEngagement.objectName,
+        speakerImmediateSituation: speakerEngagement.immediateSituation,
+        listenerImmediateSituation: listenerEngagement.immediateSituation,
         sharedRecentTopics,
         promptFocus: this.getDialoguePromptFocus(conv, speakerActivity, place),
       },
     };
     this.metrics.dialogueRequests += 1;
     const line = await this.bridge.requestDialogueLine(context);
-    if (!line?.text) {
+    const surfaceLine = line?.surfaceLine?.trim() || line?.text?.trim() || '';
+    if (!surfaceLine) {
       this.metrics.dialogueFailures += 1;
       this.metrics.dialogueFallbacks += 1;
       return null;
     }
     this.metrics.dialogueSuccess += 1;
-    return line.text.trim().slice(0, 160);
+    return {
+      text: surfaceLine.slice(0, 160),
+      surfaceLine: surfaceLine.slice(0, 160),
+      emotionTone: line?.emotionTone,
+      subtext: line?.subtext,
+    };
   }
 
   private getNeedLevel(value: number): 'low' | 'mid' | 'high' {
@@ -2044,6 +2818,29 @@ export class GameView {
     if (conv.cause === 'memory') return 'build continuity from prior interactions';
     if (place) return `stay grounded in ${place} while discussing ${speakerActivity}`;
     return `stay grounded in current activity: ${speakerActivity}`;
+  }
+
+  private getCharacterEngagementContext(character: Character): {
+    objectName?: string;
+    affordance?: string;
+    immediateSituation: string;
+  } {
+    const waypoint = character.getCurrentWaypoint();
+    const target = character.getActiveInteractionTarget();
+    const engagement = this.worldSemantics.describeEngagement(
+      waypoint
+        ? {
+          activity: waypoint.activity,
+          roomId: waypoint.roomId,
+        }
+        : undefined,
+      target,
+    );
+    return {
+      objectName: engagement.objectName,
+      affordance: engagement.affordance,
+      immediateSituation: engagement.immediateSituation,
+    };
   }
 
   private mergeRetrievedMemories(
@@ -2184,6 +2981,43 @@ export class GameView {
 
   private makePairKey(a: string, b: string): string {
     return a < b ? `${a}|${b}` : `${b}|${a}`;
+  }
+
+  private coerceSoftActivity(activity?: string): ScheduleWaypoint['activity'] {
+    if (!activity) return 'rest';
+    const normalized = activity.trim().toLowerCase();
+    if (normalized === 'social') return 'rest';
+    if ((DAILY_PLAN_ALLOWED_ACTIVITIES as string[]).includes(normalized)) {
+      return normalized as ScheduleWaypoint['activity'];
+    }
+    return 'rest';
+  }
+
+  private getSoftPlanDurationMinutes(urgency: number): number {
+    const t = Math.max(0, Math.min(1, urgency));
+    return Math.round(SHIFT_ACTIVITY_MIN_MINUTES + (SHIFT_ACTIVITY_MAX_MINUTES - SHIFT_ACTIVITY_MIN_MINUTES) * t);
+  }
+
+  private shouldApplyShiftActivityIntent(
+    agentId: string,
+    character: Character,
+    payload: AgentCognitionPayload,
+    activity: ScheduleWaypoint['activity'],
+    roomId: string | undefined,
+    urgency: number,
+  ): boolean {
+    const now = this.schedule.getTotalMinutes();
+    if ((this.shiftActivityCooldownUntil.get(agentId) ?? 0) > now) return false;
+    if ((payload.confidence ?? 0) < SHIFT_ACTIVITY_MIN_CONFIDENCE) return false;
+    if (urgency < SHIFT_ACTIVITY_MIN_URGENCY) return false;
+
+    const currentActivity = this.coerceSoftActivity(character.getCurrentActivity());
+    const currentRoomId = character.getCurrentWaypoint()?.roomId;
+    if (activity === currentActivity && (!roomId || roomId === currentRoomId)) {
+      return false;
+    }
+
+    return true;
   }
 
   private updateSocialConversations(deltaMinutes: number): void {
@@ -2382,7 +3216,10 @@ export class GameView {
     const pairAffinity = (this.getRelationshipAffinity(conv.a, conv.b) + this.getRelationshipAffinity(conv.b, conv.a)) / 2;
     const baseDelta = conv.depth === 'deep' ? 4 : 2;
     const volatility = Math.max(0.2, Math.min(1.2, 1 - Math.abs(pairAffinity) / 120));
-    const directional = baseDelta * volatility;
+    const warmupScale = this.getConversationWarmupScale(conv.a, conv.b);
+    const impressionScale = this.getConversationImpressionScale(conv.a, conv.b);
+    const directionalBase = baseDelta * volatility;
+    const directional = directionalBase > 0 ? directionalBase * warmupScale : directionalBase;
     this.applyRelationshipDeltaProgressive(conv.a, conv.b, directional, now);
     this.applyRelationshipDeltaProgressive(conv.b, conv.a, directional * 0.9, now);
     const charA = this.getCharacterById(conv.a);
@@ -2401,8 +3238,10 @@ export class GameView {
       stress: stressDelta,
     });
 
-    const memoryImportance = conv.depth === 'deep' ? 0.78 : 0.52;
-    const affect = conv.depth === 'deep' ? 0.28 : 0.12;
+    const memoryImportanceBase = conv.depth === 'deep' ? 0.78 : 0.52;
+    const affectBase = conv.depth === 'deep' ? 0.28 : 0.12;
+    const memoryImportance = memoryImportanceBase * impressionScale;
+    const affect = affectBase * impressionScale;
     this.eventBus.publish(createProtocolEvent('AGENT_MEMORY', {
       taskId: '__social__',
       agentId: conv.a,
@@ -2512,13 +3351,20 @@ export class GameView {
     payload: AgentConversationOutcomePayload,
   ): void {
     const now = Date.now();
+    const warmupScale = this.getConversationWarmupScale(conv.a, conv.b);
+    const impressionScale = this.getConversationImpressionScale(conv.a, conv.b);
     for (const delta of payload.relationshipDeltas ?? []) {
-      this.applyRelationshipDeltaProgressive(delta.fromId, delta.toId, delta.delta, now);
+      const adjustedDelta = delta.delta > 0 ? delta.delta * warmupScale : delta.delta;
+      this.applyRelationshipDeltaProgressive(delta.fromId, delta.toId, adjustedDelta, now);
     }
     const speakerA = this.getCharacterById(conv.a);
     const speakerB = this.getCharacterById(conv.b);
     const affectValues = (payload.memoryAppraisals ?? [])
-      .map((entry) => Number(entry.affect))
+      .map((entry) => {
+        const affect = Number(entry.affect);
+        if (!Number.isFinite(affect)) return affect;
+        return affect > 0 ? affect * impressionScale : affect;
+      })
       .filter((value) => Number.isFinite(value));
     const avgAffect = affectValues.length > 0
       ? affectValues.reduce((sum, value) => sum + value, 0) / affectValues.length
@@ -2539,11 +3385,11 @@ export class GameView {
         timestamp: now,
         kind: 'dialogue',
         content,
-        importance: Math.max(0, Math.min(1, appraisal.importance)),
+        importance: Math.max(0, Math.min(1, appraisal.importance * (appraisal.affect >= 0 ? impressionScale : 1))),
         appraisal: {
           kind: appraisal.kind,
-          affect: appraisal.affect,
-          importance: appraisal.importance,
+          affect: Math.max(-1, Math.min(1, appraisal.affect * (appraisal.affect > 0 ? impressionScale : 1))),
+          importance: Math.max(0, Math.min(1, appraisal.importance * (appraisal.affect >= 0 ? impressionScale : 1))),
           confidence: appraisal.confidence,
           targetAgentId: appraisal.targetAgentId,
           where: appraisal.where ?? '__social__',
@@ -2571,8 +3417,8 @@ export class GameView {
           kind: appraisal.kind as EpisodicMemoryKind,
           who: appraisal.targetAgentId,
           where: appraisal.where ?? '__social__',
-          affect: Math.max(-1, Math.min(1, appraisal.affect)),
-          importance: Math.max(0, Math.min(1, appraisal.importance)),
+          affect: Math.max(-1, Math.min(1, appraisal.affect * (appraisal.affect > 0 ? impressionScale : 1))),
+          importance: Math.max(0, Math.min(1, appraisal.importance * (appraisal.affect >= 0 ? impressionScale : 1))),
         }, now),
       );
     }
@@ -2658,6 +3504,11 @@ export class GameView {
 
   private normalizeLoadedCognitionMap(
     raw: Map<string, {
+      privateReason?: string;
+      feltThought?: string;
+      surfaceLine?: string;
+      emotionTone?: string;
+      subtext?: string;
       thoughtText: string;
       dialogueText?: string;
       planIntent: {
@@ -2676,14 +3527,28 @@ export class GameView {
     const allowedActions = new Set<AgentPlanIntentAction>(['stay', 'talk', 'shift_activity', 'reflect']);
     const result = new Map<string, AgentCognitionPayload & { updatedAt: number }>();
     for (const [agentId, cognition] of raw.entries()) {
-      const thoughtText = typeof cognition?.thoughtText === 'string' ? cognition.thoughtText.trim() : '';
+      const feltThought = typeof cognition?.feltThought === 'string'
+        ? cognition.feltThought.trim()
+        : (typeof cognition?.thoughtText === 'string' ? cognition.thoughtText.trim() : '');
+      const privateReason = typeof cognition?.privateReason === 'string'
+        ? cognition.privateReason.trim()
+        : feltThought;
       const action = cognition?.planIntent?.action;
-      if (!thoughtText || !action || !allowedActions.has(action as AgentPlanIntentAction)) {
+      if (!feltThought || !privateReason || !action || !allowedActions.has(action as AgentPlanIntentAction)) {
         continue;
       }
       result.set(agentId, {
-        thoughtText,
-        dialogueText: typeof cognition.dialogueText === 'string' ? cognition.dialogueText : undefined,
+        privateReason,
+        feltThought,
+        thoughtText: feltThought,
+        surfaceLine: typeof cognition.surfaceLine === 'string'
+          ? cognition.surfaceLine
+          : (typeof cognition.dialogueText === 'string' ? cognition.dialogueText : undefined),
+        dialogueText: typeof cognition.dialogueText === 'string'
+          ? cognition.dialogueText
+          : (typeof cognition.surfaceLine === 'string' ? cognition.surfaceLine : undefined),
+        emotionTone: this.normalizeToneToken(cognition.emotionTone),
+        subtext: this.normalizeSubtextToken(cognition.subtext),
         planIntent: {
           action: action as AgentPlanIntentAction,
           activity: cognition.planIntent.activity,
@@ -2698,6 +3563,26 @@ export class GameView {
       });
     }
     return result;
+  }
+
+  private normalizeToneToken(value: string | undefined): AgentEmotionTone | undefined {
+    if (!value) return undefined;
+    const allowed = new Set<AgentEmotionTone>(['guarded', 'warm', 'uneasy', 'playful', 'flat', 'tense']);
+    return allowed.has(value as AgentEmotionTone) ? (value as AgentEmotionTone) : undefined;
+  }
+
+  private normalizeSubtextToken(value: string | undefined): AgentCognitionPayload['subtext'] {
+    if (!value) return undefined;
+    const allowed = new Set<NonNullable<AgentCognitionPayload['subtext']>>([
+      'seeking_contact',
+      'avoiding_exposure',
+      'testing',
+      'masking',
+      'reassuring',
+    ]);
+    return allowed.has(value as NonNullable<AgentCognitionPayload['subtext']>)
+      ? (value as NonNullable<AgentCognitionPayload['subtext']>)
+      : undefined;
   }
 
   private updateCognition(scheduleTotalMinutes: number): void {
@@ -2754,6 +3639,7 @@ export class GameView {
     const gameTime = this.schedule.getGameTime();
     const agentId = character.id;
     const currentTile = character.getCurrentTile();
+    const engagement = this.getCharacterEngagementContext(character);
     const nearbyAgents = this.characters
       .filter((other) => other.id !== agentId)
       .map((other) => {
@@ -2812,6 +3698,9 @@ export class GameView {
         statusText: character.getStatusText(),
         currentActivity: character.getCurrentActivity(),
         currentRoomId: roomId,
+        currentObjectName: engagement.objectName,
+        currentAffordance: engagement.affordance,
+        immediateSituation: engagement.immediateSituation,
         nearbyAgents,
         needs: character.getNeedSnapshot(),
         degradedMode: this.degradedModeActive,
@@ -2829,54 +3718,94 @@ export class GameView {
   private applyCognition(agentId: string, payload: AgentCognitionPayload): void {
     const now = Date.now();
     const character = this.getCharacterById(agentId);
-    this.cognitionByAgent.set(agentId, { ...payload, updatedAt: now });
+    const feltThought = payload.feltThought?.trim() || payload.thoughtText?.trim() || '';
+    const privateReason = payload.privateReason?.trim() || feltThought;
+    const surfaceLine = payload.surfaceLine?.trim() || payload.dialogueText?.trim() || undefined;
+    const normalizedPayload: AgentCognitionPayload = {
+      ...payload,
+      privateReason,
+      feltThought,
+      thoughtText: feltThought,
+      surfaceLine,
+      dialogueText: surfaceLine,
+    };
+    this.cognitionByAgent.set(agentId, { ...normalizedPayload, updatedAt: now });
     this.eventBus.publish(createProtocolEvent('AGENT_COGNITION', {
       taskId: '__cognition__',
       agentId,
-      summary: payload.thoughtText,
-      cognition: payload,
+      summary: feltThought,
+      cognition: normalizedPayload,
     }));
     if (!character || character.getRuntimeState() !== 'idle_life') return;
 
-    character.setStatusText(payload.thoughtText);
-    if (payload.dialogueText) {
-      character.showSpeechBubble(payload.dialogueText, 2.2);
-    }
-    if (payload.planIntent.action === 'shift_activity' && this.isInConversation(agentId)) {
+    character.setStatusText(this.getPlanStatusText(normalizedPayload));
+    // Avoid auto-speaking cognition snippets (e.g. generic morning greetings at startup).
+    // Spoken bubbles should come from explicit conversation turns only.
+    if (normalizedPayload.planIntent.action === 'shift_activity' && this.isInConversation(agentId)) {
       return;
     }
 
-    if (payload.planIntent.action === 'talk') {
+    if (normalizedPayload.planIntent.action === 'talk') {
       if (new URLSearchParams(window.location.search).get('llmTalkIntent') === '1') {
-        this.applyTalkIntent(agentId, payload);
+        this.applyTalkIntent(agentId, normalizedPayload);
       }
       // Conversation triggering defaults to formula-driven (non-LLM).
       return;
     }
-    if (payload.planIntent.action === 'shift_activity') {
-      const activity = payload.planIntent.activity === 'social' ? 'rest' : payload.planIntent.activity;
-      character.setAutonomyDirective(
-        activity,
-        payload.planIntent.roomId,
-        85,
+    if (normalizedPayload.planIntent.action === 'shift_activity') {
+      const strictness = this.getCurrentSlotStrictness(character);
+      if (strictness >= 0.92) {
+        return;
+      }
+      const activity = this.coerceSoftActivity(normalizedPayload.planIntent.activity);
+      const urgency = Math.max(
+        0.12,
+        Math.min(
+          1,
+          Number(normalizedPayload.priority ?? 0.5) * 0.55 + Number(normalizedPayload.confidence ?? 0.5) * 0.45,
+        ),
       );
+      const duration = this.getSoftPlanDurationMinutes(urgency);
+      const homeRoom = this.getHomeRoomId(agentId);
+      const roomId = normalizedPayload.planIntent.roomId || this.getPlanRoomForActivity(activity, homeRoom);
+      if (!this.shouldApplyShiftActivityIntent(agentId, character, normalizedPayload, activity, roomId, urgency)) {
+        return;
+      }
+      character.setAutonomyDirective(activity, roomId, duration);
+      this.shiftActivityCooldownUntil.set(agentId, this.schedule.getTotalMinutes() + SHIFT_ACTIVITY_COOLDOWN_MINUTES);
     }
-    if (payload.planIntent.action === 'reflect') {
+    if (normalizedPayload.planIntent.action === 'reflect') {
       this.eventBus.publish(createProtocolEvent('AGENT_MEMORY', {
         taskId: '__cognition__',
         agentId,
-        summary: payload.thoughtText,
+        summary: privateReason,
         memory: {
           id: `mem_reflect_${now}_${Math.random().toString(16).slice(2, 6)}`,
           agentId,
           taskId: '__cognition__',
           timestamp: now,
           kind: 'reflection',
-          content: payload.thoughtText,
+          content: privateReason,
           importance: 0.44,
         },
       }));
     }
+  }
+
+  private getPlanStatusText(payload: AgentCognitionPayload): string {
+    const action = payload.planIntent.action;
+    if (action === 'talk' && payload.planIntent.targetAgentId) {
+      const target = this.characterNameMap.get(payload.planIntent.targetAgentId) ?? payload.planIntent.targetAgentId;
+      return `Looking for ${target}`;
+    }
+    if (action === 'shift_activity') {
+      const activity = payload.planIntent.activity ? this.formatActivityStatus(payload.planIntent.activity) : 'Activity';
+      return `Planning: ${activity}`;
+    }
+    if (action === 'reflect') {
+      return 'Reflecting';
+    }
+    return `Staying in ${this.formatActivityStatus(payload.planIntent.activity ?? 'rest')}`;
   }
 
   private applyTalkIntent(agentId: string, payload: AgentCognitionPayload): void {

@@ -142,11 +142,11 @@ const AUTONOMY_RECENT_WINDOW = 6;
 const AUTONOMY_RESELECT_MINUTES = 12;
 const AUTONOMY_MIN_DWELL_MINUTES = 48;
 const AUTONOMY_ROOM_ACTIVITY_CANDIDATES: Record<string, Array<ScheduleWaypoint['activity']>> = {
-  dorm1: ['rest', 'read', 'music', 'decorate', 'watch_tv'],
-  dorm2: ['rest', 'read', 'decorate', 'music', 'watch_tv'],
+  dorm1: ['rest', 'read', 'music', 'decorate'],
+  dorm2: ['rest', 'read', 'decorate', 'music'],
   hall1: ['rest', 'watch_tv', 'read', 'music'],
   hall2: ['rest', 'read'],
-  teacher_dorm: ['rest', 'read', 'music', 'watch_tv'],
+  teacher_dorm: ['rest', 'read', 'music'],
   canteen: ['eat', 'cook', 'clean', 'rest'],
   library: ['read', 'library_study', 'rest'],
   gym: ['exercise', 'sports_ball', 'rest', 'music'],
@@ -442,6 +442,19 @@ export class Character extends Container {
     this.replanCount = 0;
   }
 
+  resumeNormalLifeWithRest(durationMinutes = 22, roomId?: string): void {
+    this.runtimeState = 'idle_life';
+    this.activeTaskId = undefined;
+    this.deskTarget = undefined;
+    this.returnTarget = undefined;
+    this.cooldownMinutesLeft = 0;
+    this.statusText = 'Living normally';
+    this.pathFollower.clear();
+    this.pathDestination = null;
+    this.replanCount = 0;
+    this.setAutonomyDirective('rest', roomId, durationMinutes);
+  }
+
   startRoutineImmediately(): void {
     if (this.runtimeState !== 'idle_life') {
       return;
@@ -524,6 +537,11 @@ export class Character extends Container {
 
   getActiveTaskId(): TaskId | undefined {
     return this.activeTaskId;
+  }
+
+  setFacingDirection(direction: FacingDirection): void {
+    this.facing = direction;
+    this.updateAnimationVisual();
   }
 
   setAutonomyDirective(
@@ -928,6 +946,17 @@ export class Character extends Container {
 
   getCurrentWaypoint(): ScheduleWaypoint | undefined {
     return this.getActiveWaypoint();
+  }
+
+  getActiveInteractionTarget(): ResolvedTarget | undefined {
+    if (!this.activeWaypointTarget) return undefined;
+    return {
+      tileX: this.activeWaypointTarget.tileX,
+      tileY: this.activeWaypointTarget.tileY,
+      pointKey: this.activeWaypointTarget.pointKey,
+      facing: this.activeWaypointTarget.facing,
+      pose: this.activeWaypointTarget.pose,
+    };
   }
 
   getCurrentTile(): TilePoint {

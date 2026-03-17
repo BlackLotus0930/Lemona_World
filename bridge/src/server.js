@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
-import { createSimulatedRunEvents, mapOpenClawWebhookToEvents } from './openclawAdapter.js';
+import { createProtocolEvent, createSimulatedRunEvents, mapOpenClawWebhookToEvents } from './openclawAdapter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,7 +37,12 @@ const openRouterTemperature = Number(process.env.OPENROUTER_TEMPERATURE ?? 0.9);
 const openRouterMaxTokens = Math.max(120, Number(process.env.OPENROUTER_MAX_TOKENS ?? 700) || 700);
 const openRouterReadyReason = !openRouterApiKey ? 'missing_api_key' : null;
 
+const openClawGatewayUrl = (process.env.OPENCLAW_GATEWAY_URL ?? 'http://127.0.0.1:18789').replace(/\/+$/, '');
+const openClawGatewayToken = process.env.OPENCLAW_GATEWAY_TOKEN ?? process.env.OPENCLAW_GATEWAY_PASSWORD ?? '';
+
 let roundRobinIndex = 0;
+const upstreamRunIdByTaskId = new Map();
+const taskIdByUpstreamRunId = new Map();
 
 const server = http.createServer(async (req, res) => {
   if (!req.url || !req.method) {
@@ -61,13 +66,16 @@ const server = http.createServer(async (req, res) => {
       openRouterReady: openRouterReadyReason == null,
       openRouterReason: openRouterReadyReason,
       model: openRouterModel,
+      openClawGateway: openClawGatewayUrl,
+      openClawAuth: openClawGatewayToken ? 'configured' : 'none',
     }));
     return;
   }
 
   if (req.method === 'POST' && pathname === '/openclaw/event') {
     const body = await readJsonBody(req);
-    const events = mapOpenClawWebhookToEvents(body);
+    const normalized = normalizeOpenClawWebhookPayload(body);
+    const events = mapOpenClawWebhookToEvents(normalized);
     events.forEach((event) => broadcast(event));
     res.writeHead(202, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ accepted: true, emitted: events.length }));
@@ -237,23 +245,152 @@ wsServer.on('connection', (socket) => {
 server.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(
-    `[bridge] listening on ws/http localhost:${port} mode=${mode} openRouter=${openRouterApiKey ? 'on' : 'off'}`,
+    `[bridge] listening on ws/http localhost:${port} mode=${mode} openRouter=${openRouterApiKey ? 'on' : 'off'}`
+    + (mode === 'passthrough' ? ` openClaw=${openClawGatewayUrl}` : ''),
   );
 });
 
 function handlePublishedTask(task) {
-  const agentId = agentPool[roundRobinIndex % agentPool.length] ?? 'npc1';
-  roundRobinIndex += 1;
+  const preferredAgentId = typeof task?.assignedAgentId === 'string' ? task.assignedAgentId.trim() : '';
+  const agentId = resolveAssignedAgentId(preferredAgentId);
+  if (typeof task?.upstreamRunId === 'string' && task.upstreamRunId.trim()) {
+    rememberTaskRunMapping(String(task.id), task.upstreamRunId.trim());
+  }
 
   const simulatedEvents = createSimulatedRunEvents(task, agentId);
   if (mode === 'passthrough') {
     broadcast(simulatedEvents[0].event);
+    callOpenClawAgent(task, agentId);
     return;
   }
 
   simulatedEvents.forEach(({ delayMs, event }) => {
     setTimeout(() => broadcast(event), delayMs);
   });
+}
+
+async function callOpenClawAgent(task, agentId) {
+  const taskId = String(task.id);
+  const prompt = task.prompt || task.title || 'Hello';
+
+  broadcast(createProtocolEvent('AGENT_THINKING', {
+    taskId,
+    agentId,
+    summary: `Working on: "${prompt.slice(0, 60)}"`,
+  }));
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (openClawGatewayToken) {
+      headers['Authorization'] = `Bearer ${openClawGatewayToken}`;
+    }
+
+    const response = await fetch(`${openClawGatewayUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'openclaw',
+        stream: true,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '');
+      throw new Error(`OpenClaw gateway ${response.status}: ${errorBody.slice(0, 200)}`);
+    }
+
+    let fullText = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let sseBuffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      sseBuffer += decoder.decode(value, { stream: true });
+      const lines = sseBuffer.split('\n');
+      sseBuffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') continue;
+        try {
+          const chunk = JSON.parse(data);
+          const delta = chunk?.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullText += delta;
+            broadcast(createProtocolEvent('AGENT_STREAM_CHUNK', {
+              taskId,
+              agentId,
+              summary: delta,
+            }));
+          }
+        } catch { /* ignore SSE parse errors */ }
+      }
+    }
+
+    if (!fullText) {
+      throw new Error('OpenClaw returned empty content');
+    }
+
+    broadcast(createProtocolEvent('TASK_DONE', {
+      taskId,
+      agentId,
+      summary: 'Task completed',
+    }));
+
+    // eslint-disable-next-line no-console
+    console.log(`[bridge] OpenClaw task ${taskId} completed (${fullText.length} chars)`);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`[bridge] OpenClaw agent call failed for ${taskId}:`, error.message);
+    broadcast(createProtocolEvent('TASK_FAILED', {
+      taskId,
+      agentId,
+      summary: 'OpenClaw call failed',
+      error: error instanceof Error ? error.message : String(error),
+    }));
+  }
+}
+
+function resolveAssignedAgentId(preferredAgentId) {
+  if (preferredAgentId && agentPool.includes(preferredAgentId)) {
+    return preferredAgentId;
+  }
+  const agentId = agentPool[roundRobinIndex % agentPool.length] ?? 'npc1';
+  roundRobinIndex += 1;
+  return agentId;
+}
+
+function rememberTaskRunMapping(taskId, upstreamRunId) {
+  if (!taskId || !upstreamRunId) return;
+  upstreamRunIdByTaskId.set(taskId, upstreamRunId);
+  taskIdByUpstreamRunId.set(upstreamRunId, taskId);
+}
+
+function normalizeOpenClawWebhookPayload(payload) {
+  const normalized = payload && typeof payload === 'object' ? { ...payload } : {};
+  const clientTaskId = typeof normalized.clientTaskId === 'string' ? normalized.clientTaskId.trim() : '';
+  const incomingTaskId = typeof normalized.taskId === 'string' ? normalized.taskId.trim() : '';
+  const runId = typeof normalized.runId === 'string' ? normalized.runId.trim() : '';
+  const mappedTaskIdFromRun = runId ? taskIdByUpstreamRunId.get(runId) : undefined;
+  const mappedTaskIdFromTask = incomingTaskId ? taskIdByUpstreamRunId.get(incomingTaskId) : undefined;
+
+  if (clientTaskId && runId) {
+    rememberTaskRunMapping(clientTaskId, runId);
+  } else if (incomingTaskId && runId && !mappedTaskIdFromRun) {
+    rememberTaskRunMapping(incomingTaskId, runId);
+  }
+
+  normalized.taskId = clientTaskId || mappedTaskIdFromRun || mappedTaskIdFromTask || incomingTaskId || 'unknown';
+  if (runId) {
+    normalized.upstreamRunId = runId;
+  }
+  return normalized;
 }
 
 function broadcast(event) {
@@ -293,9 +430,19 @@ async function generateCognitionPayload(context) {
   const prompt = [
     'You are an NPC cognition planner for a life simulation.',
     'Output strict JSON only, no markdown.',
-    'Return object: {"thoughtText": string, "dialogueText"?: string, "planIntent": {"action":"stay|talk|shift_activity|reflect","activity"?:string,"targetAgentId"?:string,"roomId"?:string,"reason"?:string,"urgency"?:number},"confidence"?:number,"priority"?:number}',
-    'Keep thoughtText short (<= 18 words).',
+    'Return object: {"privateReason": string, "feltThought": string, "surfaceLine"?: string, "emotionTone"?: "guarded|warm|uneasy|playful|flat|tense", "subtext"?: "seeking_contact|avoiding_exposure|testing|masking|reassuring", "planIntent": {"action":"stay|talk|shift_activity|reflect","activity"?:string,"targetAgentId"?:string,"roomId"?:string,"reason"?:string,"urgency"?:number},"confidence"?:number,"priority"?:number}',
+    'privateReason is internal planner text; do not write for players.',
+    'feltThought is what players can observe in thought panel.',
+    'Keep feltThought concise (2-12 words), fragment-like, emotionally colored, and human.',
+    'Use surfaceLine only when it sounds like natural speech to another person.',
+    'Avoid robotic labels like "observing", "processing", "executing", "updating memory".',
+    'Do not include JSON/meta words or bracketed tags in any text field.',
+    'Use runtime.currentObjectName, runtime.currentAffordance, and runtime.immediateSituation when provided to stay concretely grounded.',
     'If action is "talk", include targetAgentId from nearbyAgents.',
+    'Prefer "stay" or "reflect" unless there is a strong reason to change activity.',
+    'Use "shift_activity" rarely.',
+    'If action is "shift_activity", make it personal and practical, not social choreography.',
+    'Do not use "shift_activity" just because another person is nearby or because a conversation happened.',
     'If action is "shift_activity", choose an activity plausible for this moment.',
     'Never output unsupported actions.',
     '',
@@ -320,6 +467,10 @@ async function generateDialogueLinePayload(context) {
     promptFocus: context?.semantic?.promptFocus,
     speakerActivity: context?.semantic?.speakerActivity,
     listenerActivity: context?.semantic?.listenerActivity,
+    speakerObjectName: context?.semantic?.speakerObjectName,
+    listenerObjectName: context?.semantic?.listenerObjectName,
+    speakerImmediateSituation: context?.semantic?.speakerImmediateSituation,
+    listenerImmediateSituation: context?.semantic?.listenerImmediateSituation,
     speakerNeedsLevel: context?.semantic?.speakerNeedsLevel,
     listenerNeedsLevel: context?.semantic?.listenerNeedsLevel,
     sharedRecentTopics: context?.semantic?.sharedRecentTopics ?? [],
@@ -336,17 +487,28 @@ async function generateDialogueLinePayload(context) {
   };
   const systemPrompt = [
     'You generate exactly one dialogue line for an NPC in a simulation.',
-    'Output strict JSON only with schema {"text": string}.',
+    'Output strict JSON only with schema {"surfaceLine": string, "emotionTone"?: "guarded|warm|uneasy|playful|flat|tense", "subtext"?: "seeking_contact|avoiding_exposure|testing|masking|reassuring"}.',
     'Hard constraints:',
-    '- Keep text <= 24 words.',
-    '- Must sound like a direct response in an ongoing conversation (not a generic opener).',
-    '- Keep it grounded in current activity/place/promptFocus.',
+    '- Keep surfaceLine <= 24 words.',
+    '- It should feel like a natural next utterance in an ongoing exchange.',
+    '- Keep it grounded in the immediate moment, place, relationship, and recent exchange.',
+    '- Use speakerObjectName, listenerObjectName, speakerImmediateSituation, and listenerImmediateSituation when provided.',
     '- Avoid repeating sharedRecentTopics and previousLines phrasing.',
     '- Respect styleHints tone/avoidTopics/signaturePhrases if provided.',
-    '- Prefer specific, situational wording over generic small talk.',
+    '- Do not explain plans or psychology directly.',
+    '- Relationship stage matters. Do not skip straight to easy familiarity.',
+    '- If relationshipStage is "stranger", assume little shared history: keep it tentative, surface-level, lightly awkward, polite, guarded, or merely situational.',
+    '- If relationshipStage is "stranger", do not imply prior knowledge, inside jokes, unusual ease, or emotional closeness.',
+    '- If relationshipStage is "familiar", some ease is fine, but keep intimacy limited and let specificity grow gradually.',
+    '- Most turns should stay in the present moment rather than turning into a shared plan.',
+    '- Prefer reaction, observation, question, or brief personal remark over invitation.',
+    '- In most turns, do not suggest changing locations or starting a joint activity.',
     '',
     'Freedom:',
-    '- You may choose any concrete wording and micro-detail, as long as constraints are respected.',
+    '- It may be a fragment, a small reaction, a partial answer, a deflection, an observation, or a fuller sentence.',
+    '- Do not make every turn equally complete or equally informative.',
+    '- Everyday conversation can be brief, indirect, lightly reactive, and unfinished.',
+    '- Let comfort, tension, familiarity, and mood shape how much is said.',
   ].join('\n');
   const userPrompt = [
     'Use this compact context:',
@@ -447,19 +609,33 @@ function normalizeCognitionPayload(rawJson, context) {
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('Invalid cognition JSON payload');
   }
-  const thoughtText = typeof parsed.thoughtText === 'string' && parsed.thoughtText.trim()
-    ? parsed.thoughtText.trim().slice(0, 180)
-    : '';
-  if (!thoughtText) {
-    throw new Error('Missing thoughtText in cognition payload');
+  const privateReason = typeof parsed.privateReason === 'string' && parsed.privateReason.trim()
+    ? parsed.privateReason.trim().slice(0, 220)
+    : (typeof parsed.thoughtText === 'string' && parsed.thoughtText.trim()
+      ? parsed.thoughtText.trim().slice(0, 220)
+      : '');
+  const feltThought = typeof parsed.feltThought === 'string' && parsed.feltThought.trim()
+    ? parsed.feltThought.trim().slice(0, 180)
+    : (typeof parsed.thoughtText === 'string' && parsed.thoughtText.trim()
+      ? parsed.thoughtText.trim().slice(0, 180)
+      : '');
+  if (!privateReason || !feltThought) {
+    throw new Error('Missing privateReason/feltThought in cognition payload');
   }
-  const dialogueText = typeof parsed.dialogueText === 'string' && parsed.dialogueText.trim()
-    ? parsed.dialogueText.trim().slice(0, 180)
-    : undefined;
+  const surfaceLine = typeof parsed.surfaceLine === 'string' && parsed.surfaceLine.trim()
+    ? parsed.surfaceLine.trim().slice(0, 180)
+    : (typeof parsed.dialogueText === 'string' && parsed.dialogueText.trim()
+      ? parsed.dialogueText.trim().slice(0, 180)
+      : undefined);
   const intent = normalizePlanIntent(parsed.planIntent, context);
   return {
-    thoughtText,
-    dialogueText,
+    privateReason,
+    feltThought,
+    surfaceLine,
+    thoughtText: feltThought,
+    dialogueText: surfaceLine,
+    emotionTone: normalizeEmotionTone(parsed.emotionTone),
+    subtext: normalizeSubtext(parsed.subtext),
     planIntent: intent,
     confidence: clamp01(parsed.confidence ?? 0.6),
     priority: clamp01(parsed.priority ?? 0.5),
@@ -485,17 +661,46 @@ function normalizeDialogueLinePayload(rawJson) {
     if (!directText) {
       throw new Error('Invalid dialogue JSON payload');
     }
-    return { text: directText };
+    return {
+      text: directText,
+      surfaceLine: directText,
+    };
   }
+  const surfaceLine = typeof parsed.surfaceLine === 'string' ? parsed.surfaceLine.trim().slice(0, 180) : '';
   const text = typeof parsed.text === 'string' ? parsed.text.trim().slice(0, 180) : '';
-  if (!text) {
+  const resolved = surfaceLine || text;
+  if (!resolved) {
     const nested = extractDialogueText(rawJson);
     if (!nested) {
       throw new Error('Missing dialogue text in payload');
     }
-    return { text: nested };
+    return {
+      text: nested,
+      surfaceLine: nested,
+      emotionTone: normalizeEmotionTone(parsed?.emotionTone),
+      subtext: normalizeSubtext(parsed?.subtext),
+    };
   }
-  return { text };
+  return {
+    text: resolved,
+    surfaceLine: resolved,
+    emotionTone: normalizeEmotionTone(parsed.emotionTone),
+    subtext: normalizeSubtext(parsed.subtext),
+  };
+}
+
+function normalizeEmotionTone(value) {
+  const allowed = new Set(['guarded', 'warm', 'uneasy', 'playful', 'flat', 'tense']);
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  return allowed.has(normalized) ? normalized : undefined;
+}
+
+function normalizeSubtext(value) {
+  const allowed = new Set(['seeking_contact', 'avoiding_exposure', 'testing', 'masking', 'reassuring']);
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  return allowed.has(normalized) ? normalized : undefined;
 }
 
 function extractDialogueText(raw) {

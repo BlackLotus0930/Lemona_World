@@ -112,10 +112,28 @@ export class RelayProvider implements AgentBridgeClient {
       }
       const parsed = (await response.json()) as CognitionResponse;
       const cognition = parsed?.cognition;
-      if (!cognition || typeof cognition.thoughtText !== 'string' || !cognition.planIntent) {
+      if (!cognition || !cognition.planIntent) {
         return null;
       }
-      return cognition;
+      const feltThought = typeof cognition.feltThought === 'string'
+        ? cognition.feltThought.trim()
+        : (typeof cognition.thoughtText === 'string' ? cognition.thoughtText.trim() : '');
+      const privateReason = typeof cognition.privateReason === 'string'
+        ? cognition.privateReason.trim()
+        : feltThought;
+      if (!feltThought || !privateReason) {
+        return null;
+      }
+      return {
+        ...cognition,
+        privateReason,
+        feltThought,
+        thoughtText: feltThought,
+        surfaceLine: typeof cognition.surfaceLine === 'string' ? cognition.surfaceLine.trim() : undefined,
+        dialogueText: typeof cognition.dialogueText === 'string'
+          ? cognition.dialogueText.trim()
+          : (typeof cognition.surfaceLine === 'string' ? cognition.surfaceLine.trim() : undefined),
+      };
     } catch {
       return null;
     } finally {
@@ -143,11 +161,19 @@ export class RelayProvider implements AgentBridgeClient {
         }
         const parsed = (await response.json()) as DialogueResponse;
         const line = parsed?.line;
-        if (!line || typeof line.text !== 'string' || !line.text.trim()) {
+        const surfaceLine = typeof line?.surfaceLine === 'string' ? line.surfaceLine.trim() : '';
+        const text = typeof line?.text === 'string' ? line.text.trim() : '';
+        const resolvedText = surfaceLine || text;
+        if (!line || !resolvedText) {
           if (attempt < this.dialogueRetryCount) continue;
           return null;
         }
-        return { text: line.text.trim().slice(0, 180) };
+      return {
+        text: resolvedText.slice(0, 180),
+        surfaceLine: resolvedText.slice(0, 180),
+        emotionTone: line.emotionTone,
+        subtext: line.subtext,
+      };
       } catch {
         if (attempt >= this.dialogueRetryCount) {
           return null;

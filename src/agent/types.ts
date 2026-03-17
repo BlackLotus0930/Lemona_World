@@ -1,5 +1,12 @@
 export type AgentId = string;
 export type TaskId = string;
+export type AgentEmotionTone = 'guarded' | 'warm' | 'uneasy' | 'playful' | 'flat' | 'tense';
+export type AgentSubtext =
+  | 'seeking_contact'
+  | 'avoiding_exposure'
+  | 'testing'
+  | 'masking'
+  | 'reassuring';
 
 export type TaskStatus =
   | 'created'
@@ -53,6 +60,9 @@ export interface AgentDialoguePayload {
   speakerId: AgentId;
   listenerId?: AgentId;
   text: string;
+  surfaceLine?: string;
+  emotionTone?: AgentEmotionTone;
+  subtext?: AgentSubtext;
   conversationId?: string;
   turnIndex?: number;
   depth?: 'smalltalk' | 'deep';
@@ -77,7 +87,18 @@ export interface AgentPlanIntent {
 }
 
 export interface AgentCognitionPayload {
+  privateReason: string;
+  feltThought: string;
+  surfaceLine?: string;
+  emotionTone?: AgentEmotionTone;
+  subtext?: AgentSubtext;
+  /**
+   * @deprecated Kept as compatibility alias for feltThought.
+   */
   thoughtText: string;
+  /**
+   * @deprecated Kept as compatibility alias for surfaceLine.
+   */
   dialogueText?: string;
   planIntent: AgentPlanIntent;
   confidence?: number; // 0..1
@@ -97,6 +118,9 @@ export interface AgentCognitionContext {
     statusText: string;
     currentActivity: string;
     currentRoomId?: string;
+    currentObjectName?: string;
+    currentAffordance?: string;
+    immediateSituation?: string;
     nearbyAgents: Array<{ id: AgentId; name: string; distanceTiles: number }>;
     needs?: {
       energy: number;
@@ -158,6 +182,10 @@ export interface AgentDialogueContext {
     };
     speakerActivity?: string;
     listenerActivity?: string;
+    speakerObjectName?: string;
+    listenerObjectName?: string;
+    speakerImmediateSituation?: string;
+    listenerImmediateSituation?: string;
     sharedRecentTopics?: string[];
     promptFocus?: string;
   };
@@ -165,6 +193,9 @@ export interface AgentDialogueContext {
 
 export interface AgentDialogueLine {
   text: string;
+  surfaceLine?: string;
+  emotionTone?: AgentEmotionTone;
+  subtext?: AgentSubtext;
 }
 
 export interface AgentDailyPlanWindow {

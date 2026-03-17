@@ -15,6 +15,7 @@ export interface ScheduleSnapshot {
   gameDays: number;
   realSecondsAccum: number;
   timeScale: number;
+  clockScale?: number;
   paused: boolean;
 }
 
@@ -66,11 +67,13 @@ export interface ActiveConversationSnapshot {
 }
 
 export interface RightPanelEntrySnapshot {
-  mode: 'dialogues' | 'thoughts';
+  mode: 'dialogues' | 'thoughts' | 'openclaw';
   html: string;
+  agentId?: string;
   conversationId?: string;
   pairKey?: string;
   pairLabel?: string;
+  streamId?: string;
 }
 
 export interface SaveGameSnapshot {
@@ -93,6 +96,11 @@ export interface SaveGameSnapshot {
     topicEnergyByPair: SaveMapEntries<number>;
     dialogueLogCooldownUntil: SaveMapEntries<number>;
     cognitionByAgent?: SaveMapEntries<{
+      privateReason?: string;
+      feltThought?: string;
+      surfaceLine?: string;
+      emotionTone?: string;
+      subtext?: string;
       thoughtText: string;
       dialogueText?: string;
       planIntent: {
@@ -140,7 +148,7 @@ export interface SaveGameSnapshot {
   };
   ui?: {
     selectedCharacterId: string | null;
-    rightPanelMode: 'dialogues' | 'thoughts';
+    rightPanelMode: 'dialogues' | 'thoughts' | 'openclaw';
     rightPanelEntries?: RightPanelEntrySnapshot[];
   };
 }

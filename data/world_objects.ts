@@ -192,7 +192,7 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
       // horizontal_sofa (108) + vertical_sofa (109) + sofa_chair (207).
       { id: 'hall_sofa_1', tileX: 22, tileY: 17, facing: 'down', pose: 'sit' },
       { id: 'hall_sofa_2', tileX: 24, tileY: 17, facing: 'down', pose: 'sit' },
-      { id: 'hall_sofa_3', tileX: 26, tileY: 17, facing: 'down', pose: 'sit' },
+      { id: 'hall_sofa_3', tileX: 25, tileY: 17, facing: 'down', pose: 'sit' },
       { id: 'hall_sofa_4', tileX: 22, tileY: 18, facing: 'right', pose: 'sit' },
       { id: 'hall_sofa_5', tileX: 22, tileY: 20, facing: 'right', pose: 'sit' },
     ],
@@ -204,36 +204,13 @@ export const WORLD_OBJECTS: WorldObjectDefinition[] = [
     affordances: ['study', 'work'],
     interactionPoints: [
       // chair objects (97,100,101) for hall_computer_table (239).
-      { id: 'hall_pc_1', tileX: 31, tileY: 19, facing: 'up', pose: 'sit' },
-      { id: 'hall_pc_2', tileX: 33, tileY: 19, facing: 'up', pose: 'sit' },
-      { id: 'hall_pc_3', tileX: 35, tileY: 19, facing: 'up', pose: 'sit' },
+      { id: 'hall_pc_1', tileX: 31, tileY: 20, facing: 'up', pose: 'sit' },
+      { id: 'hall_pc_2', tileX: 33, tileY: 20, facing: 'up', pose: 'sit' },
+      { id: 'hall_pc_3', tileX: 35, tileY: 20, facing: 'up', pose: 'sit' },
     ],
     queuePoints: [
       { id: 'hall_pc_queue_1', tileX: 30, tileY: 19 },
       { id: 'hall_pc_queue_2', tileX: 29, tileY: 19 },
-    ],
-  },
-  {
-    id: 'hall_living_table_and_books',
-    roomId: 'hall1',
-    name: 'Living Room Table, Books, and Shelves',
-    affordances: ['read', 'social', 'rest', 'study', 'decorate'],
-    interactionPoints: [
-      // living_room_table (165), books/bookshelf/book_stand/shelf/desk_lamp/dashboard (211/206/210/214/215/216).
-      { id: 'hall_living_read_1', tileX: 22, tileY: 20, facing: 'up', pose: 'sit' },
-      { id: 'hall_living_read_2', tileX: 15, tileY: 18, facing: 'right', pose: 'stand' },
-      { id: 'hall_living_read_3', tileX: 14, tileY: 20, facing: 'right', pose: 'stand' },
-    ],
-  },
-  {
-    id: 'hall_media_corner',
-    roomId: 'hall1',
-    name: 'Hall TV Shelf and Camera Spot',
-    affordances: ['watch_tv', 'decorate', 'work'],
-    interactionPoints: [
-      // tv_shelf (217) and camera object (154) in living room corridor edge.
-      { id: 'hall_media_1', tileX: 24, tileY: 19, facing: 'right', pose: 'stand' },
-      { id: 'hall_media_2', tileX: 25, tileY: 19, facing: 'right', pose: 'stand' },
     ],
   },
   {

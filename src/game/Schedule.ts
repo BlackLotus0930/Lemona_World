@@ -2,7 +2,7 @@ import type { ScheduleSnapshot } from './persistence/snapshotTypes';
 
 /**
  * Game time and schedule management.
- * One game minute = real-time seconds (scaled by timeScale).
+ * One game minute = real-time seconds (scaled by clockScale).
  */
 
 export class Schedule {
@@ -11,6 +11,7 @@ export class Schedule {
   private readonly startDate = new Date(2019, 8, 1); // 2019-09-01
   private realSecondsAccum = 0;
   private _timeScale = 1;
+  private _clockScale = 1;
   private _paused = false;
   private static readonly WEEKDAY_NAMES: Array<
     'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'
@@ -22,6 +23,14 @@ export class Schedule {
 
   getTimeScale(): number {
     return this._timeScale;
+  }
+
+  setClockScale(v: number) {
+    this._clockScale = Math.max(0, Math.min(64, v));
+  }
+
+  getClockScale(): number {
+    return this._clockScale;
   }
 
   isPaused(): boolean {
@@ -89,6 +98,7 @@ export class Schedule {
       gameDays: this.gameDays,
       realSecondsAccum: this.realSecondsAccum,
       timeScale: this._timeScale,
+      clockScale: this._clockScale,
       paused: this._paused,
     };
   }
@@ -98,6 +108,9 @@ export class Schedule {
     this.gameDays = Math.max(1, Math.floor(state.gameDays));
     this.realSecondsAccum = Math.max(0, Number(state.realSecondsAccum) || 0);
     this.setTimeScale(Number(state.timeScale) || 1);
+    if (state.clockScale !== undefined) {
+      this.setClockScale(Number(state.clockScale) || 1);
+    }
     this._paused = Boolean(state.paused);
   }
 }

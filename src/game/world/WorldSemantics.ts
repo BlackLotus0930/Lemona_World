@@ -20,6 +20,14 @@ export interface ResolvedTarget {
   pose?: InteractionPose;
 }
 
+export interface EngagementContext {
+  objectId?: string;
+  objectName?: string;
+  affordance?: AffordanceType;
+  pose?: InteractionPose;
+  immediateSituation: string;
+}
+
 const ACTIVITY_TO_AFFORDANCE: Record<ScheduleWaypoint['activity'], AffordanceType> = {
   sleep: 'sleep',
   eat: 'eat',
@@ -192,6 +200,27 @@ export class WorldSemantics {
       return;
     }
     this.reservationManager.release(pointKey, agentId);
+  }
+
+  describeEngagement(
+    waypoint: Pick<ScheduleWaypoint, 'activity' | 'roomId'> | undefined,
+    target: Pick<ResolvedTarget, 'tileX' | 'tileY' | 'pose'> | undefined,
+  ): EngagementContext {
+    const activity = waypoint?.activity;
+    const roomId = waypoint?.roomId;
+    const affordance = activity ? ACTIVITY_TO_AFFORDANCE[activity] : undefined;
+    const object = roomId && target
+      ? this.findObjectByTile(roomId, target.tileX, target.tileY)
+      : undefined;
+    const objectName = object?.name;
+    const pose = target?.pose;
+    return {
+      objectId: object?.id,
+      objectName,
+      affordance,
+      pose,
+      immediateSituation: this.buildImmediateSituation(activity, roomId, objectName, pose),
+    };
   }
 
   private chooseBestPoint(
@@ -384,6 +413,60 @@ export class WorldSemantics {
     const perAgent = this.lastObjectByAgent.get(agentId) ?? {};
     perAgent[activity] = objectId;
     this.lastObjectByAgent.set(agentId, perAgent);
+  }
+
+  private findObjectByTile(roomId: string, tileX: number, tileY: number): WorldObjectDefinition | undefined {
+    return WORLD_OBJECTS.find((object) =>
+      object.roomId === roomId
+      && (
+        object.interactionPoints.some((point) => point.tileX === tileX && point.tileY === tileY)
+        || object.queuePoints?.some((point) => point.tileX === tileX && point.tileY === tileY)
+      ));
+  }
+
+  private buildImmediateSituation(
+    activity: ScheduleWaypoint['activity'] | undefined,
+    roomId: string | undefined,
+    objectName: string | undefined,
+    pose: InteractionPose | undefined,
+  ): string {
+    const action = activity ? this.describeActivityVerb(activity) : 'going about the day';
+    const objectPhrase = objectName ? `at ${objectName}` : undefined;
+    const posePhrase = pose ? this.describePosePhrase(pose) : undefined;
+    const roomPhrase = roomId ? `in ${roomId}` : undefined;
+    return [action, objectPhrase, posePhrase, roomPhrase].filter(Boolean).join(' ');
+  }
+
+  private describeActivityVerb(activity: ScheduleWaypoint['activity']): string {
+    const map: Record<ScheduleWaypoint['activity'], string> = {
+      sleep: 'trying to sleep',
+      eat: 'eating',
+      study: 'studying',
+      class_study: 'following class',
+      library_study: 'settling into quiet study',
+      read: 'reading quietly',
+      exercise: 'working out',
+      sports_ball: 'practicing with a ball',
+      social: 'lingering socially',
+      rest: 'taking a breather',
+      music: 'practicing music',
+      perform: 'performing',
+      watch_tv: 'watching something',
+      toilet: 'using the bathroom',
+      shower: 'getting cleaned up',
+      bathe: 'taking a bath',
+      clean: 'cleaning up',
+      cook: 'making something to eat',
+      laundry: 'doing laundry',
+      decorate: 'adjusting personal things',
+    };
+    return map[activity] ?? 'going about the day';
+  }
+
+  private describePosePhrase(pose: InteractionPose): string {
+    if (pose === 'sit') return 'while seated';
+    if (pose === 'lie') return 'while lying down';
+    return 'while standing';
   }
 
   private findAndReserveAdjacentToFurniture(

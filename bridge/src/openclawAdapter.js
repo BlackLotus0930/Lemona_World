@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-function createProtocolEvent(type, payload) {
+export function createProtocolEvent(type, payload) {
   return {
     id: crypto.randomUUID(),
     type,
